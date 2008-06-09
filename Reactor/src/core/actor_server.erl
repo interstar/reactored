@@ -33,7 +33,7 @@
 -export([start/0,stop/0]).
 -export([new/5,remove/3]).
 -export([create/5,update/4,delete/3,delete/4,delete/5,retrieve/3,retrieve/4,retrieve/5,q/4,graph/5]).
--export([search/5,tagged/5,profile/5]).
+-export([search/4,tagged/4,profile/4]).
 -export([add_acl/4,remove_acl/4]).
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -46,6 +46,16 @@
 %%====================================================================
 
 %%====================================================================
+%% types (attributes are the same as proplists)
+%% @type credentials() = {uri,string()} | {token,string()}.
+%% @type attribute() = {string(),string()}.
+%% @type attributes() = [attribute()].
+%% @type itemref() = {ok,string()}.
+%% @type error() = {error,string()}.
+%% @type item() = {item,uri,created,modified,domain,title,description,author,type,status,users,groups,revision,sync,xref}.
+%%====================================================================
+
+%%====================================================================
 %% Identity/Profile API
 %%====================================================================
 
@@ -54,14 +64,22 @@
 %%                         {ok,Xref} |
 %%                         {error, Error}
 %% Description: Creates a new participant and returns their xref
+%%
+%% @spec new(Credentials::credentials(),Service::string(),Domain::string(),
+%% 	  Item::string(),Attributes::attributes()) ->
+%%      {ok,Xref::string()} | {error, Error::string()}
 %%--------------------------------------------------------------------
 new(Credentials,Service,Domain,Item,Attributes) ->
     gen_server:call(?MODULE,{identity,Credentials,Service,create,Domain,Item,Attributes}).
 %%--------------------------------------------------------------------
-%% Function: new(Credentials,Service,Domain,Item,Attributes) -> 
+%% Function: remove(Credentials,Service,Domain,Item,Attributes) -> 
 %%                         {ok,Xref} |
 %%                         {error, Error}
 %% Description: Deletes a participant and ACLs, returns their xref
+%%
+%% @spec new(Credentials::credentials(),Service::string(),Domain::string(),
+%% 	  Item::string(),Attributes::attributes()) ->
+%%      {ok,Xref::string()} | {error, Error::string()}
 %%--------------------------------------------------------------------
 remove(Credentials,Service,Item) ->
     gen_server:call(?MODULE,{identity,Credentials,Service,delete,Item}).
@@ -70,20 +88,100 @@ remove(Credentials,Service,Item) ->
 %% Resource API
 %%====================================================================
 
+%%--------------------------------------------------------------------
+%% Function: create(Credentials,Service,Domain, Item, Attributes) -> 
+%%                         {ok,Xref} |
+%%                         {error, Error}
+%% Description: Creates a new Item (resource), returns its xref
+%%
+%% @spec create(Credentials::credentials(),Service::string(),Domain::string(),
+%% 	  Item::string(),Attributes::attributes()) ->
+%%      {ok,Xref::string()} | {error, Error::string()}
+%%--------------------------------------------------------------------
 create(Credentials,Service,Domain, Item, Attributes) ->
      gen_server:call(?MODULE,{Credentials,Service,create,Domain, Item, Attributes}).
+%%--------------------------------------------------------------------
+%% Function: update(Credentials,Service,Qitem, Attributes) -> 
+%%                         {ok,Xref} |
+%%                         {error, Error}
+%% Description: Update and item (resource), returns its xref
+%%
+%% @spec update(Credentials::credentials(),Service::string(),Domain::string(),
+%% 	  Item::string(),Attributes::attributes()) ->
+%%      {ok,Xref::string()} | {error, Error::string()}
+%%--------------------------------------------------------------------
 update(Credentials,Service,Qitem, Attributes) -> %% Update only
      gen_server:call(?MODULE,{Credentials,Service,update,Qitem, Attributes}).
+%%--------------------------------------------------------------------
+%% Function: delete(Credentials,Service,Qitem) -> 
+%%                         {ok,Xref} |
+%%                         {error, Error}
+%% Description: deletes an item (resource), returns its xref
+%%
+%% @spec delete(Credentials::credentials(),Service::string(),
+%% 	  Item::string()) ->
+%%      {ok,Xref::string()} | {error, Error::string()}
+%%--------------------------------------------------------------------
 delete(Credentials,Service,Qitem) ->
     gen_server:call(?MODULE,{Credentials,Service,delete,Qitem}).
+%%--------------------------------------------------------------------
+%% Function: delete(Credentials,Service,Domain, Item) -> 
+%%                         {ok,Xref} |
+%%                         {error, Error}
+%% Description: deletes an item (resource), returns its xref
+%%
+%% @spec delete(Credentials::credentials(),Service::string(),Domain::string(),
+%% 	  Item::string()) ->
+%%      {ok,Xref::string()} | {error, Error::string()}
+%%--------------------------------------------------------------------
 delete(Credentials,Service,Domain, Item) ->
     gen_server:call(?MODULE,{Credentials,Service,delete,Domain, Item}).
+%%--------------------------------------------------------------------
+%% Function: delete(Credentials,Service,Domain, Item, Attributes) -> 
+%%                         {ok,Xref} |
+%%                         {error, Error}
+%% Description: deletes an items attributes, returns its xref
+%%
+%% @spec new(Credentials::credentials(),Service::string(),Domain::string(),
+%% 	  Item::string(),Attributes::attributes()) ->
+%%      {ok,Xref::string()} | {error, Error::string()}
+%%--------------------------------------------------------------------
 delete(Credentials,Service,Domain, Item, Attributes) ->
     gen_server:call(?MODULE,{Credentials,Service,delete,Domain, Item, Attributes}).
+%%--------------------------------------------------------------------
+%% Function: retrieve(Credentials,Service,Qitem) -> 
+%%                         [Attributes] |
+%%                         {error, Error}
+%% Description: retrieves an items and it's attributes
+%%
+%% @spec new(Credentials::credentials(),Service::string(),
+%% 	  Item::string()) ->
+%%      [Attributes::attributes()] | {error, Error}
+%%--------------------------------------------------------------------
 retrieve(Credentials,Service,Qitem) ->
     gen_server:call(?MODULE,{Credentials,Service,retrieve,Qitem}).
+%%--------------------------------------------------------------------
+%% Function: retrieve(Credentials,Service,Domain, Item) -> 
+%%                         [Attributes] |
+%%                         {error, Error}
+%% Description: retrieves an items and it's attributes
+%%
+%% @spec new(Credentials::credentials(),Service::string(),Domain::string(),
+%% 	  Item::string()) ->
+%%      [Attributes::attributes()] | {error, Error}
+%%--------------------------------------------------------------------
 retrieve(Credentials,Service,Domain, Item) ->
      gen_server:call(?MODULE,{Credentials,Service,retrieve,Domain, Item}).
+%%--------------------------------------------------------------------
+%% Function: retrieve(Credentials,Service,Domain, Item, Attribute) -> 
+%%                         [Attribute] |
+%%                         {error, Error}
+%% Description: retrieves an item's specific attributes
+%%
+%% @spec new(Credentials::credentials(),Service::string(),Domain::string(),
+%% 	  Item::string(),Attributes::attributes()) ->
+%%      [Attributes::attribute()] | {error, Error}
+%%--------------------------------------------------------------------
 retrieve(Credentials,Service,Domain, Item, Attribute) ->
     gen_server:call(?MODULE,{Credentials,Service,retrieve,Domain, Item, Attribute}).
 
@@ -91,17 +189,66 @@ retrieve(Credentials,Service,Domain, Item, Attribute) ->
 %% listing API
 %%====================================================================
 
-search(Credentials,Service,Service,Domain,Text) ->
+%%--------------------------------------------------------------------
+%% Function: search(Credentials,Service,Domain,Text) -> 
+%%                         [Item] |
+%%                         {error, Error}
+%% Description: retrieves items via plain Text search accross domain items
+%%
+%% @spec new(Credentials::credentials(),Service::string(),Domain::string(),
+%% 	  Text::string()) ->
+%%      [Item::item()] | {error, Error}
+%%--------------------------------------------------------------------
+search(Credentials,Service,Domain,Text) ->
     gen_server:call(?MODULE,{listing,Credentials,Service,search,Domain,Text}).
-tagged(Credentials,Service,Service,Domain,Tags) ->
+%%--------------------------------------------------------------------
+%% Function: tagged(Credentials,Service,Domain,Tags) -> 
+%%                         [Item] |
+%%                         {error, Error}
+%% Description: retrieves items tagged with tags for the specified domain
+%%
+%% @spec new(Credentials::credentials(),Service::string(),Domain::string(),
+%% 	  tags::string()) ->
+%%      [Item::item()] | {error, Error}
+%%--------------------------------------------------------------------
+tagged(Credentials,Service,Domain,Tags) ->
     gen_server:call(?MODULE,{listing,Credentials,Service,tags,Domain,Tags}).
 
 %does this connect up to q(identity,Iid) via Identity_server
-profile(Credentials,Service,Service,Domain,Profile) ->
+%%--------------------------------------------------------------------
+%% Function: profile(Credentials,Service,Domain,Profile) -> 
+%%                         [Item] |
+%%                         {error, Error}
+%% Description: retrieves the users profile (items under their identity)
+%%
+%% @spec new(Credentials::credentials(),Service::string(),Domain::string(),
+%% 	  profile::string()) ->
+%%      [Item::item()] | {error, Error}
+%%--------------------------------------------------------------------
+profile(Credentials,Service,Domain,Profile) ->
     gen_server:call(?MODULE,{listing,Credentials,Service,profile,Domain,Profile}).
-
+%%--------------------------------------------------------------------
+%% Function: q(Credentials,Service,Domain, Attributes) -> 
+%%                         [Item] |
+%%                         {error, Error}
+%% Description: retrieves items with matching attributes accross domain
+%%
+%% @spec new(Credentials::credentials(),Service::string(),Domain::string(),
+%% 	  Attributes::attributes()) ->
+%%      [Item::item()] | {error, Error}
+%%--------------------------------------------------------------------
 q(Credentials,Service,Domain, Attributes) ->
     gen_server:call(?MODULE,{listing,Credentials,Service,q,Domain,Attributes}).
+%%--------------------------------------------------------------------
+%% Function: graph(Credentials,Service,Domain, Uri, Attributes) -> 
+%%                         [Item] |
+%%                         {error, Error}
+%% Description: retrieves the item graph (node tree)
+%%
+%% @spec new(Credentials::credentials(),Service::string(),Domain::string(),
+%% 	  item::string(),Attributes::attributes()) ->
+%%      [Item::item()] | {error, Error}
+%%--------------------------------------------------------------------
 graph(Credentials,Service,Domain, Uri, Attributes) ->
     gen_server:call(?MODULE,{listing,Credentials,Service,graph,Domain,{Uri,Attributes}}).
 
@@ -155,7 +302,6 @@ init([]) ->
 %%--------------------------------------------------------------------
 %% Identity/Profile calls
 
-%TODO Actions should occur before Pattern matching not after.
 handle_call({identity,Credentials,Service,create,Domain,Item,Attributes}, _From, State) ->
     Reply = case identity_server:authorise(Credentials,Service,create,{qualified(Domain,Item), Attributes}) of 
 		{ok,Actor} -> 
@@ -204,7 +350,8 @@ handle_call({Credentials,Service,create,Domain, Item, Attributes}, _From, State)
 		{ok,Actor} -> 
 		    case attribute_server:create(Domain,Item,Attributes) of
 			{atomic,Xref} ->
-			    pattern_server:process(Actor,Service,create,Domain,Item,[{"xref",Xref}|Attributes]);
+			    pattern_server:process(Actor,Service,create,Domain,Item,[{"xref",Xref}|Attributes]),
+			    {atomic,Xref};
 		    _ -> {error,Actor,error({"Could not create resource",Domain,Item,Attributes})}
 		    end;
 		{error,Actor,Why} ->
@@ -218,7 +365,8 @@ handle_call({Credentials,Service,update,Qitem, Attributes}, _From, State) ->
 		{ok,Actor} -> 
 		    case attribute_server:update(Qitem,Attributes) of 
 			{atomic,Xref} ->
-			    pattern_server:process(Actor,Service,update,domain(Qitem),Qitem,[{"xref",Xref}|Attributes]);
+			    pattern_server:process(Actor,Service,update,domain(Qitem),Qitem,[{"xref",Xref}|Attributes]),
+			    {atomic,Xref};
 			_ -> {error,Actor,error({"Could not update resource",Qitem,Attributes})}
 		    end;
 		{error,Actor,Why} ->
@@ -232,7 +380,8 @@ handle_call({Credentials,Service,delete,Qitem}, _From, State) ->
 		{ok,Actor} -> 
 		    case attribute_server:delete(Qitem) of
 			{atomic,Xref} ->
-			    pattern_server:process(Actor,Service,delete,domain(Qitem),Qitem,[{"xref",Xref}]);
+			    pattern_server:process(Actor,Service,delete,domain(Qitem),Qitem,[{"xref",Xref}]),
+			    {atomic,Xref};
 			_ -> {error,Actor,error({"Could not delete resource",Qitem})}
 		    end;
 		{error,Actor,Why} ->
@@ -247,7 +396,8 @@ handle_call({Credentials,Service,delete,Domain, Item}, _From, State) ->
 		{ok,Actor} -> 
 		    case attribute_server:delete(Domain,Item) of
 			{atomic,Xref} ->
-			    pattern_server:process(Actor,Service,delete,Domain,Item,[{"xref",Xref}]);
+			    pattern_server:process(Actor,Service,delete,Domain,Item,[{"xref",Xref}]),
+			    {atomic,Xref};
 			_ -> {error,Actor,error({"Could not delete resource",Domain,Item})}
 		    end;
 		{error,Actor,Why} ->
@@ -261,7 +411,8 @@ handle_call({Credentials,Service,delete,Domain, Item, Attributes}, _From, State)
 		{ok,Actor} -> 
 		    case attribute_server:delete(Domain,Item,Attributes) of
 			{atomic,Xref} ->
-			    pattern_server:process(Actor,Service,delete,Domain,Item,[{"xref",Xref}|Attributes]);
+			    pattern_server:process(Actor,Service,delete,Domain,Item,[{"xref",Xref}|Attributes]),
+			    {atomic,Xref};
 			_ -> {error,Actor,error({"Could not delete attributes",Domain,Item,Attributes})}
 		    end;
 		{error,Actor,Why} ->
