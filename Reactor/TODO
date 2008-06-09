@@ -1,0 +1,12 @@
+There is so much todo, but here are some pointers.
+
+* Sinks we need to develop the following sink adaptors: Imap,Http,Xmpp,S3sink,GAEsink, a sink app that runs python scripts or enable python sink apps to be constructed.
+
+* Identity adaptors : Oauth, LDAP
+
+* Domain Applications : Tag application (to handle tagging under '/Tags' domain), A godd example app to show how reactor apps are built. A domain app that could run no native domain apps written in say python/ruby etc..
+
+* ACL profiles :  I am working on at least one of these that works like the original rel3 demo app, we need to explore others.
+
+* Add unicode support
+
