@@ -20,7 +20,7 @@
 -module(search_util).
 -include("schema.hrl").
 -include_lib("stdlib/include/qlc.hrl").
--export([create_words/0,reset_words/0,add_words/2,retrieve/1,delete/1,update/2,words/1,all/0,index/1,prep/1,indexes/0,uid/0]).
+-export([create_words/0,reset_words/0,add_words/2,retrieve/1,delete/1,update/2,words/1,all/0,index/1,index/2,prep/1,indexes/0,uid/0]).
 -define(DOMAIN,"search.rel3.com").
 -define(MINWORDSIZE,4).
 
@@ -35,7 +35,7 @@ reset_words() ->
     mnesia:clear_table(words).
 
 add_words([],Id) ->
-    error({"No words found in for",Id});
+    error({"No words found in",Id});
 add_words(Words,Id) ->
     add_words(lists:sort(Words),"",0,Id,[]).
 
@@ -76,9 +76,8 @@ index(Sources) ->
     lists:map(fun({Sid,Url}) -> index(Sid,Url) end, Sources).
 
 index(Sid,Url) ->
-    Stats = {21,5},
     add_words(words(prep(Url)),Sid),
-    {Sid,Url,date(),Stats}.
+    {ok,Sid}.
 
 indexes() ->
     F = fun() -> 

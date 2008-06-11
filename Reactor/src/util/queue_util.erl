@@ -31,12 +31,16 @@ add(Queue,Sink,Id,Data) ->
 
 delete(Item) ->
     case attribute_server:delete(Item) of 
-	{ok} -> ok;
-	{error,Error} -> {error,Error}
+	{ok,_Xref} -> ok;
+	{error,Error} -> {error,error({"Problemn deleting item from queue",Item,Error})}
     end.
 
 update(Mid,Reason) ->
-    attribute_server:update(Mid,[{"History",[Reason]}]). % Add update to queue item history
+     % Add update to queue item history
+    case attribute_server:update(Mid,[{"History",[Reason]}]) of 
+	{ok,_Xref} -> ok;
+	{error,Error} -> {error,error({"Problemn updating queue",Mid,Error})}
+    end.
 
 pack_item(Sink,Id) ->
     lists:flatten(io_lib:format("~s/~s/~B", [?SINKS,atom_to_list(Sink),Id])).
@@ -58,6 +62,10 @@ transform([Item|Items],Sinks) ->
     transform(Items,[{Item#item.domain,Sink,Aid,Item}|Sinks]);
 transform([],Sinks) ->
     Sinks.
+
+error(Error) ->
+    error_logger:error_msg("Queue Util module - Says Whoops ~p~n",[Error]),
+    Error.
 
 %% update(Queue,Items) ->
 %%     update(Queue,Items,[]).

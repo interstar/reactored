@@ -22,7 +22,8 @@
 -export([all/6,read/6,write/6]).
 
 all(Actor,Service,autherror,Domain,Resource,Params) ->
-    error_logger:error_msg("Pattern Match - Authentication error ~p~n",[{Actor,Service,autherror,Domain,Resource,Params}]);
+    error_logger:error_msg("Pattern Match - Authentication error ~p~n",[{Actor,Service,autherror,Domain,Resource,Params}]),
+	{nomatch};
 %% this matcher is called for all operations
 all(Actor,Service,Command,Domain,Resource,Params) ->
 	   {nomatch}.
@@ -53,8 +54,8 @@ index(Actor,Service,Command,Domain,Resource,Params) ->
 		_ ->
 		    attribute:item_id(Domain,Resource)
 	    end,
-    {_,Xref} = proplist:lookup("xref",Params),
-    Data = [{"title",atom_to_list(Command)},
+    {_,Xref} = proplists:lookup("xref",Params),
+    Data = [{"title",Command},
 	    {"description",Qitem},
 	    {"author",Actor},
 	    {"type","index"},
@@ -65,15 +66,21 @@ index(Actor,Service,Command,Domain,Resource,Params) ->
 params_to_string(Sep,Params) ->
     params_to_string(Sep,Params,[]).
 params_to_string(Sep,[{K,V}],Out) ->
-    params_to_string(Sep,[],[K ++ "=" ++ V |Out]);
+    params_to_string(Sep,[],[K ++ "=" ++ s(V) |Out]);
 params_to_string(Sep,[{K,V,_Replace}],Out) ->
-    params_to_string(Sep,[],[K ++ "=" ++ V |Out]);
+    params_to_string(Sep,[],[K ++ "=" ++ s(V) |Out]);
 params_to_string(Sep,[K],Out) ->
     params_to_string(Sep,[],[K |Out]);
 params_to_string(Sep,[{K,V}|Params],Out) ->
-    params_to_string(Sep,Params,[K ++ "=" ++ V ++ Sep |Out]);
+    params_to_string(Sep,Params,[K ++ "=" ++ s(V) ++ Sep |Out]);
 params_to_string(Sep,[{K,V,_Replace}|Params],Out) ->
-    params_to_string(Sep,Params,[K ++ "=" ++ V ++ Sep |Out]);
+    params_to_string(Sep,Params,[K ++ "=" ++ s(V) ++ Sep |Out]);
 params_to_string(Sep,[K|Params],Out) ->
     params_to_string(Sep,Params,[K ++ Sep |Out]);
 params_to_string(_Sep,[],Out) -> lists:flatten(lists:reverse(Out)).
+
+
+s(V) when is_list(V) ->
+     V;
+s(V) ->
+    io_lib:format("~p",[V]).

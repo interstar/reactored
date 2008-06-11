@@ -22,7 +22,7 @@
 -include("system.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--export([setup_database/0,start/0,stop/0,reset/0,reset_tables/0]).
+-export([setup_database/0,start/0,stop/0,reset/0,reset_tables/0,create_store/0]).
 
 % TODO make these unit test no destructive. at the momemnt the kill the entire store. they should only effect a 'testdomain' and its items clearing up after itself
 
@@ -36,6 +36,14 @@ setup_database() ->
     mnesia:create_table(item,[{attributes, record_info(fields,item)},{record_name,item}]),
     mnesia:create_table(attribute,[{attributes,record_info(fields,attribute)},{record_name,attribute}]),
     mnesia:stop().
+
+create_store() ->
+    mnesia:delete_table(domain),
+    mnesia:delete_table(item),
+    mnesia:delete_table(attribute),
+    mnesia:create_table(domain,[{attributes, record_info(fields,domain)},{record_name,domain}]),
+    mnesia:create_table(item,[{attributes, record_info(fields,item)},{record_name,item}]),
+    mnesia:create_table(attribute,[{attributes,record_info(fields,attribute)},{record_name,attribute}]).
 
 start() ->
 	mnesia:start(),
@@ -87,7 +95,7 @@ write_test_cases() ->
 	?_assertMatch(["testdomain"] ,
 		      domain:retrieve())},
        {"Create Item", 
-	?_assertMatch({atomic,_xref} ,
+	?_assertMatch({ok,_xref} ,
 		      attribute:create("testdomain",
 				"testitem", 
 				[{"created",123456789},
@@ -118,7 +126,7 @@ write_test_cases() ->
 	?_assertMatch({"type",["text"]} ,
 		      attribute:retrieve("testdomain", "testitem",["type"]))},
        {"Replace Item Attribute", 
-	?_assertMatch({atomic,_xref} ,
+	?_assertMatch({ok,_xref} ,
 		      attribute:create("testdomain",
 				"testitem",
 				[{"status",["Testing"],true}]))},
@@ -126,7 +134,7 @@ write_test_cases() ->
 	?_assertMatch({"status",["Testing"]} ,
 		      attribute:retrieve("testdomain", "testitem",["status"]))},
        {"Replace Attribute", 
-	?_assertMatch({atomic,_xref} ,
+	?_assertMatch({ok,_xref} ,
 		      attribute:create("testdomain",
 				"testitem",
 				[{"category",["Tested"],true}]))},
@@ -134,7 +142,7 @@ write_test_cases() ->
 	?_assertMatch({"category",["Tested"]} ,
 		      attribute:retrieve("testdomain", "testitem",["category"]))},
        {"Append Attribute", 
-	?_assertMatch({atomic,_xref} ,
+	?_assertMatch({ok,_xref} ,
 		      attribute:update("testdomain|testitem",
 				[{"tags",["tested"]}]))},
        {"Append Attribute Read",
@@ -142,7 +150,7 @@ write_test_cases() ->
 		      attribute:retrieve("testdomain", "testitem",["tags"]))},
 
        {"Append Item Attribute", 
-	?_assertMatch({atomic,_xref} ,
+	?_assertMatch({ok,_xref} ,
 		      attribute:create("testdomain",
 				"testitem",
 				[{"groups",["identity.rel3.com/groups/public"]}]))},
@@ -150,7 +158,7 @@ write_test_cases() ->
 	?_assertMatch({"groups",["identity.rel3.com/groups/public","identity.rel3.com/groups/contributors","identity.rel3.com/groups/administrators"]} ,
 		      attribute:retrieve("testdomain", "testitem",["groups"]))},
        {"Append Item Multiple Attribute", 
-	?_assertMatch({atomic,_xref} ,
+	?_assertMatch({ok,_xref} ,
 		      attribute:create("testdomain",
 				"testitem",
 				[{"users",["identity.rel3.com/groups/friend1","identity.rel3.com/groups/friend2"]}]))},
@@ -158,7 +166,7 @@ write_test_cases() ->
 	?_assertMatch({"users",["identity.rel3.com/groups/friend2","identity.rel3.com/groups/friend1","identity.rel3.com/folknology","identity.rel3.com/admin"]} ,
 		      attribute:retrieve("testdomain", "testitem",["users"]))},
        {"Create Attribute",
-	?_assertMatch({atomic,_xref} ,
+	?_assertMatch({ok,_xref} ,
 		      attribute:create("testdomain",
 				"testitem",
 				[{"links",["http://www.rel3.com/bookmarks/1","http://www.rel3.com/bookmarks/2"]}]))},
@@ -166,7 +174,7 @@ write_test_cases() ->
 	?_assertMatch({"links",["http://www.rel3.com/bookmarks/1","http://www.rel3.com/bookmarks/2"]} ,
 		      attribute:retrieve("testdomain", "testitem",["links"]))},
        {"Create Integer Attribute", 
-	?_assertMatch({atomic,_xref} ,
+	?_assertMatch({ok,_xref} ,
 		      attribute:create("testdomain",
 				"testitem",
 				[{"marks",[99]}]))},
@@ -174,7 +182,7 @@ write_test_cases() ->
 	?_assertMatch({"marks",[99]} ,
 		      attribute:retrieve("testdomain", "testitem",["marks"]))},
        {"Append Integer Attribute", 
-	?_assertMatch({atomic,_xref} ,
+	?_assertMatch({ok,_xref} ,
 		      attribute:create("testdomain",
 				"testitem",
 				[{"marks",[88]}]))},
@@ -182,7 +190,7 @@ write_test_cases() ->
 	?_assertMatch({"marks",[88,99]} ,
 		      attribute:retrieve("testdomain", "testitem",["marks"]))},
        {"Replace Integer Attribute", 
-	?_assertMatch({atomic,_xref} ,
+	?_assertMatch({ok,_xref} ,
 		      attribute:create("testdomain",
 				"testitem",
 				[{"marks",[100],true}]))},
@@ -190,14 +198,14 @@ write_test_cases() ->
 	?_assertMatch({"marks",[100]} ,
 		      attribute:retrieve("testdomain", "testitem",["marks"]))},
        {"Delete Attribute",
-	?_assertMatch({atomic,_xref} , 
+	?_assertMatch({ok,_xref} , 
 		      attribute:delete("testdomain",
 				   "testitem",["links"]))},
        {"Delete Attribute Read",
 	?_assertMatch([] ,
 		      attribute:retrieve("testdomain", "testitem",["links"]))},
        {"Delete Item",
-	?_assertMatch({atomic,_xref} ,
+	?_assertMatch({ok,_xref} ,
 		      attribute:delete("testdomain", "testitem"))},
        {"Delete Item Read",
 	?_assertMatch([] ,

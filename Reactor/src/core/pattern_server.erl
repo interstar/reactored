@@ -136,7 +136,7 @@ queue({nomatch})->
     void;
 queue({Sink,Data})->
     case queue_server:add(?SYSTEM,Sink,Data) of
-	{ok} -> void;
+	{ok,Xref} -> Xref;
 	{error,Why} -> error({"Error putting on system queue",Why,{Sink,Data}})
     end;
 queue(Unrecognised) ->

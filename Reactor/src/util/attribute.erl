@@ -87,6 +87,9 @@ retrieve(Qitem) when is_list(Qitem) ->
 		lists:flatten(Attributes,retrieve(Qitem, extended));
 	[] -> retrieve(Qitem, extended)
     end;
+retrieve({raw,Qitem})  -> 
+    retrieve(Qitem, raw);
+
 retrieve(Ref)  -> 
     retrieve(Ref, byref).
 
@@ -95,10 +98,12 @@ retrieve(Ref, byref) ->
 		   X#item.xref =:= Ref]));
 retrieve(Qitem, raw) -> 
     F = fun() ->
-		[It] = mnesia:read({item,Qitem}),
-		It
+		mnesia:read({item,Qitem})
 	end,
-    mnesia:transaction(F);
+    case mnesia:transaction(F) of
+	{atomic,X} -> X;
+	Error -> {error,Error}
+    end;
 retrieve(Qitem, basic) -> 
     do(qlc:q([X || X <- mnesia:table(item),
 		   X#item.item =:= Qitem]));

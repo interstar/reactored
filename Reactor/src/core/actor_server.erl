@@ -303,13 +303,15 @@ init([]) ->
 %% Identity/Profile calls
 
 handle_call({identity,Credentials,Service,create,Domain,Item,Attributes}, _From, State) ->
-    Reply = case identity_server:authorise(Credentials,Service,create,{qualified(Domain,Item), Attributes}) of 
+    %% Note special case of authority based on parent ACL having 'create' control
+    Reply = case identity_server:authorise(Credentials,Service,create,{parent(Domain,Item), Attributes}) of 
 		{ok,Actor} -> 
 		    case identity_server:create(Domain,Item,Attributes) of
-			{atomic,Id} ->
-			    proplist:delete("email",Attributes),
-			    case attribute_server:create(Domain,Item,[{"identity",Id}|Attributes]) of
-				{atomic,Xref} ->
+			{ok,Id} ->
+			    proplists:delete("email",Attributes),
+			    proplists:delete("password",Attributes),
+			    case attribute_server:create(Domain,Item,[{"identity",Id},{"type","identity"}] ++ Attributes) of
+				{ok,Xref} ->
 				    pattern_server:process(Actor,Service,create,Domain,Item,[{"xref",Xref}|Attributes]),
 				    {ok,Xref};
 				_ -> {error,Actor,error({"Could not create resource",Domain,Item,Attributes})}
@@ -319,7 +321,7 @@ handle_call({identity,Credentials,Service,create,Domain,Item,Attributes}, _From,
 		{error,Actor,Why} ->
 		    pattern_server:process(Actor,Service,autherror,Domain,Item,[{"autherror",Why}|Attributes]),
 		    {autherror,Why}
-		end,
+	    end,
     {reply, Reply, State};
 
 handle_call({identity,Credentials,Service,delete,Item}, _From, State) ->
@@ -328,7 +330,7 @@ handle_call({identity,Credentials,Service,delete,Item}, _From, State) ->
 		    case identity_server:delete(Item) of
 			{ok,_Id} ->
 			    case attribute_server:delete(Item) of
-				{atomic,Xref} ->
+				{ok,Xref} ->
 				    %% TODO system needs to remove traces of this participant ; links etc..
 				    pattern_server:process(Actor,Service,delete,domain(Item),Item,[{"xref",Xref}]),
 				    {ok,Xref};
@@ -346,12 +348,13 @@ handle_call({identity,Credentials,Service,delete,Item}, _From, State) ->
 
 %% Resource calls
 handle_call({Credentials,Service,create,Domain, Item, Attributes}, _From, State) ->
-    Reply = case identity_server:authorise(Credentials,Service,create,{qualified(Domain,Item), Attributes}) of 
+    %% Note special case of authority based on parent ACL having 'create' control
+    Reply = case identity_server:authorise(Credentials,Service,create,{parent(Domain,Item), Attributes}) of 
 		{ok,Actor} -> 
 		    case attribute_server:create(Domain,Item,Attributes) of
-			{atomic,Xref} ->
+			{ok,Xref} ->
 			    pattern_server:process(Actor,Service,create,Domain,Item,[{"xref",Xref}|Attributes]),
-			    {atomic,Xref};
+			    {ok,Xref};
 		    _ -> {error,Actor,error({"Could not create resource",Domain,Item,Attributes})}
 		    end;
 		{error,Actor,Why} ->
@@ -364,9 +367,9 @@ handle_call({Credentials,Service,update,Qitem, Attributes}, _From, State) ->
     Reply = case identity_server:authorise(Credentials,Service,update,{Qitem,[]}) of 
 		{ok,Actor} -> 
 		    case attribute_server:update(Qitem,Attributes) of 
-			{atomic,Xref} ->
+			{ok,Xref} ->
 			    pattern_server:process(Actor,Service,update,domain(Qitem),Qitem,[{"xref",Xref}|Attributes]),
-			    {atomic,Xref};
+			    {ok,Xref};
 			_ -> {error,Actor,error({"Could not update resource",Qitem,Attributes})}
 		    end;
 		{error,Actor,Why} ->
@@ -379,9 +382,9 @@ handle_call({Credentials,Service,delete,Qitem}, _From, State) ->
     Reply = case identity_server:authorise(Credentials,Service,delete,{Qitem,[]}) of 
 		{ok,Actor} -> 
 		    case attribute_server:delete(Qitem) of
-			{atomic,Xref} ->
+			{ok,Xref} ->
 			    pattern_server:process(Actor,Service,delete,domain(Qitem),Qitem,[{"xref",Xref}]),
-			    {atomic,Xref};
+			    {ok,Xref};
 			_ -> {error,Actor,error({"Could not delete resource",Qitem})}
 		    end;
 		{error,Actor,Why} ->
@@ -395,9 +398,9 @@ handle_call({Credentials,Service,delete,Domain, Item}, _From, State) ->
     Reply = case identity_server:authorise(Credentials,Service,delete,qualified(Domain,Item)) of 
 		{ok,Actor} -> 
 		    case attribute_server:delete(Domain,Item) of
-			{atomic,Xref} ->
+			{ok,Xref} ->
 			    pattern_server:process(Actor,Service,delete,Domain,Item,[{"xref",Xref}]),
-			    {atomic,Xref};
+			    {ok,Xref};
 			_ -> {error,Actor,error({"Could not delete resource",Domain,Item})}
 		    end;
 		{error,Actor,Why} ->
@@ -410,9 +413,9 @@ handle_call({Credentials,Service,delete,Domain, Item, Attributes}, _From, State)
     Reply = case identity_server:authorise(Credentials,Service,delete,{qualified(Domain,Item), Attributes}) of 
 		{ok,Actor} -> 
 		    case attribute_server:delete(Domain,Item,Attributes) of
-			{atomic,Xref} ->
+			{ok,Xref} ->
 			    pattern_server:process(Actor,Service,delete,Domain,Item,[{"xref",Xref}|Attributes]),
-			    {atomic,Xref};
+			    {ok,Xref};
 			_ -> {error,Actor,error({"Could not delete attributes",Domain,Item,Attributes})}
 		    end;
 		{error,Actor,Why} ->
@@ -544,6 +547,23 @@ domain(Qitem) ->
 
 qualified(Domain,Item) ->
     attribute:item_id(Domain,Item).
+
+parent(Domain,Item) ->
+    [Node|Nodes] = lists:reverse(string:tokens(Item,"/")),
+    attribute:item_id(Domain,parent(Nodes,$/,[])).
+
+parent([],Sep,Path) ->    
+    lists:flatten(Path);
+parent([Node|Nodes],Sep,Path) ->    
+    parent(Nodes,Sep,[[Sep|Node]|Path]).
+
+
+%% for full paths including protocol e.g. http://www.rel3.com/rel3/identities
+qualified_parent([Node|[]],Sep,Path) ->    
+    lists:flatten([Node|Path]);
+qualified_parent([Node|Nodes],Sep,Path) ->    
+    qualified_parent(Nodes,Sep,[[Sep|Node]|Path]).
+    
 
 error(Error) ->
     error_logger:error_msg("Actor server - Says Whoops ~p~n",[Error]),

@@ -90,7 +90,7 @@ log_state() ->
 init([]) ->
     io:format("~p starting~n",[?MODULE]),
     mnesia:start(),
-    mnesia:wait_for_tables([domain,item,attribute],20000),
+    mnesia:wait_for_tables([domain,item,attribute],1000),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -105,35 +105,35 @@ init([]) ->
 
 handle_call({put,Qitem, Attributes},_From,State) ->
     Reply = case attribute:update(Qitem, Attributes) of
-		{atomic,ok} -> {ok};
+		{atomic,Xref} -> {ok,Xref};
 		Error -> {error,error(Error)}
 	    end,
     {reply, Reply, State};
 
 handle_call({put,Domain, Item, Attributes},_From,State) ->
     Reply = case attribute:create(Domain, Item, Attributes) of
-		{atomic,ok} -> {ok};
+		{atomic,Xref} -> {ok,Xref};
 		Error -> {error,error(Error)}
 	    end,
     {reply, Reply, State};
 
 handle_call({delete,Qitem},_From,State) ->
     Reply = case attribute:delete(Qitem) of
-		{atomic,ok} -> {ok};
+		{atomic,Xref} -> {ok,Xref};
 		Error -> {error,error(Error)}
 	    end,
     {reply, Reply, State};
 
 handle_call({delete,Domain, Item},_From,State) ->
     Reply = case attribute:delete(Domain, Item) of
-		{atomic,ok} -> {ok};
+		{atomic,Xref} -> {ok,Xref};
 		Error -> {error,error(Error)}
 	    end,
     {reply, Reply, State};
 
 handle_call({delete,Domain, Item,Attributes},_From,State) ->
     Reply = case attribute:delete(Domain, Item,Attributes) of
-		{atomic,ok} -> {ok};
+		{atomic,Xref} -> {ok,Xref};
 		Error -> {error,error(Error)}
 	    end,
     {reply, Reply, State};

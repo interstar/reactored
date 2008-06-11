@@ -100,17 +100,17 @@ handle_call({authenticate,Id,Pswd}, _From, State) ->
 		    ok;
 	Bad -> 
 	    % Identity module error/ not loaded?
-	    {error,error({"Identity modul return error, could, be a missing module",Bad})}
+	    {error,error({"Identity module return error, could, be a missing module",Bad})}
     end,
     {reply, Reply, State};
 
 handle_call({create,Domain,Item,Attributes}, _From, State) ->
     Reply = case apply(identity_adaptor(),create,[qualified(Domain,Item),Attributes]) of
-	ok-> 
-	    ok;
+	{ok,Id} -> 
+	    {ok,Id};
 	Bad -> 
 	    % Identity module error/ not loaded?
-	    {error,error({"Identity modul return error, could, be a missing module",Bad})}
+	    {error,error({"Identity module return error, could, be a missing module",Bad})}
     end,
     {reply, Reply, State};
 handle_call({delete,Item}, _From, State) ->
@@ -120,7 +120,7 @@ handle_call({delete,Item}, _From, State) ->
 		    {ok,Id};
 		Bad -> 
 		% Identity module error/ not loaded?
-		    {error,error({"Identity modul return error, could, be a missing module",Bad})}
+		    {error,error({"Identity module return error, could, be a missing module",Bad})}
     end,
     {reply, Reply, State};
 handle_call({filter,tagged,{uri,Author},_Domain,{Tags,Author}}, _From, State) ->
@@ -150,7 +150,7 @@ handle_call({authorise,Credentials,Service,Command,Request}, _From, State) ->
 		    {ok,Uri};
 	{error,Iuri,Why} -> 
 	    % Authosrisation failure
-	    {error,error({"could not authorise. " ++ Iuri ++ "," ++ Why})}
+	    {error,error({"could not authorise. " ++ Iuri}),Why}
     end,
     {reply, Reply, State};
 
@@ -224,8 +224,8 @@ check_access({uri,Iuri},_Service,Command,{Uri,Attributes}) ->
 check_access({token,Token},_Service,Command,{Uri,Attributes}) -> 
     Iuri = get_uri_from_token(Token),
     check_privileges(Iuri,Uri,Command,get_privileges(Iuri,{Uri,Attributes}));
-check_access(_Credential,Service,Command,Request) ->
-    {error,error({"Badly formed Credentials for command ",atom_to_list(Command) ++ ",Credentials not recognised ",Service,Command,Request})}.
+check_access({_,I},Service,Command,Request) ->
+    {error,I,error({"Badly formed Credentials for command ",atom_to_list(Command) ++ ",Credentials not recognised ",Service,Command,Request})}.
 
 get_privileges(Iuri,{Uri,_Attributes}) ->
     index_server:controls(Iuri,Uri).
@@ -291,7 +291,7 @@ summarise([],Summary) ->
 %%     attribute:item_id(Domain,Item).
 
 get_acl(Attributes) ->
-    case proplist:lookup("acl",Attributes) of
+    case proplists:lookup("acl",Attributes) of
 	none -> [];
 	{_,undefined} -> []; 
 	{_,Acl} -> lists:map(fun list_to_atom/1,string:tokens(Acl,","))

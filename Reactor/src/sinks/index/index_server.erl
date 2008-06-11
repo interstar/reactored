@@ -116,6 +116,7 @@ handle_call({sink,Action}, _From, State) ->
     end,
     Reply = case Result of
 	[_Indexed] -> ok; %Indexed
+	{ok,_Sid} -> ok;%Indexed single action
 	{atomic,ok} -> ok; %removed from index
 	{error,Error} -> {error,Error}
     end,
@@ -207,6 +208,10 @@ error(Error) ->
     error_logger:error_msg("Index sinker server - Says Whoops ~p~n",[Error]),
     Error.
 
-get_index_id(Iuri) ->
-    It = attribute_server:retrieve(Iuri,raw),
-    It#item.xref.
+get_index_id(Uri) ->
+    case attribute_server:retrieve({raw,Uri}) of
+	{ok,[]} -> 
+	    error({"Could not look up item : " ++ Uri}),
+	    0;
+	{ok,[It]} -> It#item.xref
+    end.
