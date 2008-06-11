@@ -154,11 +154,14 @@ handle_call({authorise,Credentials,Service,Command,Request}, _From, State) ->
     end,
     {reply, Reply, State};
 
-handle_call({controls,Credentials,_Service,add_acl,Request}, _From, State) ->
-    Reply = add(Credentials,Request),
+handle_call({controls,Credentials,_Service,grant,Request}, _From, State) ->
+    Reply = grant(Credentials,Request),
     {reply, Reply, State};
-handle_call({controls,Credentials,_Service,remove_acl,Request}, _From, State) ->
-    Reply = remove(Credentials,Request),
+handle_call({controls,Credentials,_Service,revoke,Request}, _From, State) ->
+    Reply = revoke(Credentials,Request),
+    {reply, Reply, State};
+handle_call({controls,Credentials,_Service,inherit,Request}, _From, State) ->
+    Reply = inherit(Credentials,Request),
     {reply, Reply, State};
 
 
@@ -256,10 +259,15 @@ screen(Actor,Domain, Uri, Attributes) ->
     Uris = index_server:controls(Actor,retrieve,[It#item.created || It <- Results]),
     lists:filter(fun(I) -> lists:member(I#item.item,Uris) end,Results).
 
-add({uri,Iuri},{Uri,Attributes}) ->
-    index_server:add_controls(Iuri,Uri,get_acl(Attributes)).
-remove({uri,Iuri},{Uri,Attributes}) ->
-    index_server:remove_controls(Iuri,Uri,get_acl(Attributes)).
+grant({uri,Iuri},{Uri,Attributes}) ->
+    index_server:grant(Iuri,Uri,get_acl(Attributes)).
+
+revoke({uri,Iuri},{Uri,Attributes}) ->
+    index_server:revoke(Iuri,Uri,get_acl(Attributes)).
+
+inherit({uri,Iuri},{Uri,Attributes}) ->
+    {_,Parent} = proplists:lookup("parent",Attributes),
+    index_server:inherit(Iuri,Uri,Parent).
 
 identity_adaptor() ->
     ?DEFAULTIDADAPTOR.

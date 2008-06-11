@@ -146,7 +146,10 @@ match(Actor,Service,Command,Domain,Resource,Params) ->
     lists:flatten([pattern_matcher:all(Actor,Service,Command,Domain,Resource,Params),
     matching(Actor,Service,Command,Domain,Resource,Params)]).
 
-matching(Actor,Service,Command,Domain,Resource,Params) when Command =:= create; Command =:= update;Command =:= delete ->
+matching(Actor,Service,create,Domain,Resource,Params) ->
+    policy:create(Actor,Service,create,Domain,Resource,Params),
+    pattern_matcher:write(Actor,Service,create,Domain,Resource,Params);
+matching(Actor,Service,Command,Domain,Resource,Params) when Command =:= update;Command =:= delete ->
     pattern_matcher:write(Actor,Service,Command,Domain,Resource,Params);
 matching(Actor,Service,Command,Domain,Resource,Params) ->
     pattern_matcher:read(Actor,Service,Command,Domain,Resource,Params).

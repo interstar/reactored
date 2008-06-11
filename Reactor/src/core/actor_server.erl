@@ -34,7 +34,7 @@
 -export([new/5,remove/3]).
 -export([create/5,update/4,delete/3,delete/4,delete/5,retrieve/3,retrieve/4,retrieve/5,q/4,graph/5]).
 -export([search/4,tagged/4,profile/4]).
--export([add_acl/4,remove_acl/4]).
+-export([grant/4,revoke/4]).
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
@@ -256,10 +256,10 @@ graph(Credentials,Service,Domain, Uri, Attributes) ->
 %% ACL Controls {uri,Iuri},{Uri,Attributes}
 %%====================================================================
 
-add_acl(Credentials,Service,Qitem,Attributes) ->
-    gen_server:call(?MODULE,{Credentials,Service,add_acl,Qitem, Attributes}).
-remove_acl(Credentials,Service,Qitem,Attributes) ->
-    gen_server:call(?MODULE,{Credentials,Service,remove_acl,Qitem, Attributes}).
+grant(Credentials,Service,Qitem,Attributes) ->
+    gen_server:call(?MODULE,{Credentials,Service,grant,Qitem, Attributes}).
+revoke(Credentials,Service,Qitem,Attributes) ->
+    gen_server:call(?MODULE,{Credentials,Service,revoke,Qitem, Attributes}).
 
 %%====================================================================
 %% End Public Reactor API
@@ -304,22 +304,24 @@ init([]) ->
 
 handle_call({identity,Credentials,Service,create,Domain,Item,Attributes}, _From, State) ->
     %% Note special case of authority based on parent ACL having 'create' control
-    Reply = case identity_server:authorise(Credentials,Service,create,{parent(Domain,Item), Attributes}) of 
+    Parent = parent(Domain,Item),
+    Attribs = [{"parent",Parent}|Attributes],
+    Reply = case identity_server:authorise(Credentials,Service,create,{Parent, Attributes}) of 
 		{ok,Actor} -> 
-		    case identity_server:create(Domain,Item,Attributes) of
+		    case identity_server:create(Domain,Item,Attribs) of
 			{ok,Id} ->
-			    proplists:delete("email",Attributes),
-			    proplists:delete("password",Attributes),
-			    case attribute_server:create(Domain,Item,[{"identity",Id},{"type","identity"}] ++ Attributes) of
+			    proplists:delete("email",Attribs),
+			    proplists:delete("password",Attribs),
+			    case attribute_server:create(Domain,Item,[{"identity",Id},{"type","identity"}] ++ Attribs) of
 				{ok,Xref} ->
-				    pattern_server:process(Actor,Service,create,Domain,Item,[{"xref",Xref}|Attributes]),
+				    pattern_server:process(Actor,Service,create,Domain,Item,[{"xref",Xref}|Attribs]),
 				    {ok,Xref};
-				_ -> {error,Actor,error({"Could not create resource",Domain,Item,Attributes})}
+				_ -> {error,Actor,error({"Could not create resource",Domain,Item,Attribs})}
 			    end; 
-			_ -> {error,Actor,error({"Could not create identity",Domain,Item,Attributes})}
+			_ -> {error,Actor,error({"Could not create identity",Domain,Item,Attribs})}
 		    end;
 		{error,Actor,Why} ->
-		    pattern_server:process(Actor,Service,autherror,Domain,Item,[{"autherror",Why}|Attributes]),
+		    pattern_server:process(Actor,Service,autherror,Domain,Item,[{"autherror",Why}|Attribs]),
 		    {autherror,Why}
 	    end,
     {reply, Reply, State};
@@ -349,16 +351,18 @@ handle_call({identity,Credentials,Service,delete,Item}, _From, State) ->
 %% Resource calls
 handle_call({Credentials,Service,create,Domain, Item, Attributes}, _From, State) ->
     %% Note special case of authority based on parent ACL having 'create' control
-    Reply = case identity_server:authorise(Credentials,Service,create,{parent(Domain,Item), Attributes}) of 
+    Parent = parent(Domain,Item),
+    Attribs = [{"parent",Parent}|Attributes],
+    Reply = case identity_server:authorise(Credentials,Service,create,{Parent, Attributes}) of 
 		{ok,Actor} -> 
-		    case attribute_server:create(Domain,Item,Attributes) of
+		    case attribute_server:create(Domain,Item,Attribs) of
 			{ok,Xref} ->
-			    pattern_server:process(Actor,Service,create,Domain,Item,[{"xref",Xref}|Attributes]),
+			    pattern_server:process(Actor,Service,create,Domain,Item,[{"xref",Xref}|Attribs]),
 			    {ok,Xref};
-		    _ -> {error,Actor,error({"Could not create resource",Domain,Item,Attributes})}
+		    _ -> {error,Actor,error({"Could not create resource",Domain,Item,Attribs})}
 		    end;
 		{error,Actor,Why} ->
-		    pattern_server:process(Actor,Service,autherror,Domain,Item,[{"autherror",Why}|Attributes]),
+		    pattern_server:process(Actor,Service,autherror,Domain,Item,[{"autherror",Why}|Attribs]),
 		    {autherror,Why}
 		end,
     {reply, Reply, State};
@@ -475,21 +479,22 @@ handle_call({listing,{uri,Actor},Service,Meta,Qitem,Q}, _From, State) ->
     {reply, Reply, State};
 
 %% ACL Controls
-handle_call({Credentials,Service,add_acl,Qitem, Attributes}, _From, State) ->
-    Reply = case identity_server:authorise(Credentials,Service,add_acl,{Qitem, Attributes}) of 
+handle_call({Credentials,Service,grant,Qitem, Attributes}, _From, State) ->
+    Reply = case identity_server:authorise(Credentials,Service,grant,{Qitem, Attributes}) of 
 		{ok,Actor} -> 
-		    pattern_server:process(Actor,Service,add_acl,[],Qitem,Attributes),
-		    identity_server:controls(Credentials,Service,add_acl,{Qitem, Attributes});
+		    pattern_server:process(Actor,Service,grant,[],Qitem,Attributes),
+		    identity_server:controls(Credentials,Service,grant,{Qitem, Attributes});
 		{error,Actor,Why} ->
 		    pattern_server:process(Actor,Service,autherror,[],Qitem,[{"autherror",Why},Attributes]),
 		    {autherror,Why}
 		end,
     {reply, Reply, State};
-handle_call({Credentials,Service,remove_acl,Qitem, Attributes}, _From, State) ->
-    Reply = case identity_server:authorise(Credentials,Service,remove_acl,{Qitem, Attributes}) of 
+
+handle_call({Credentials,Service,revoke,Qitem, Attributes}, _From, State) ->
+    Reply = case identity_server:authorise(Credentials,Service,revoke,{Qitem, Attributes}) of 
 		{ok,Actor} -> 
-		    pattern_server:process(Actor,Service,remove_acl,[],Qitem,Attributes),
-		    identity_server:controls(Credentials,Service,remove_acl,{Qitem, Attributes});
+		    pattern_server:process(Actor,Service,revoke,[],Qitem,Attributes),
+		    identity_server:controls(Credentials,Service,revoke,{Qitem, Attributes});
 		{error,Actor,Why} ->
 		    pattern_server:process(Actor,Service,autherror,[],Qitem,[{"autherror",Why},Attributes]),
 		    {autherror,Why}
@@ -498,6 +503,7 @@ handle_call({Credentials,Service,remove_acl,Qitem, Attributes}, _From, State) ->
 
 handle_call(stop, _From, State) ->
     {stop,normal,stopped, State};
+
 
 handle_call(Request, _From, State) ->
     io:format("Actor request not supported ~p",[Request]),
@@ -549,17 +555,17 @@ qualified(Domain,Item) ->
     attribute:item_id(Domain,Item).
 
 parent(Domain,Item) ->
-    [Node|Nodes] = lists:reverse(string:tokens(Item,"/")),
+    [_Node|Nodes] = lists:reverse(string:tokens(Item,"/")),
     attribute:item_id(Domain,parent(Nodes,$/,[])).
 
-parent([],Sep,Path) ->    
+parent([],_Sep,Path) ->    
     lists:flatten(Path);
 parent([Node|Nodes],Sep,Path) ->    
     parent(Nodes,Sep,[[Sep|Node]|Path]).
 
 
 %% for full paths including protocol e.g. http://www.rel3.com/rel3/identities
-qualified_parent([Node|[]],Sep,Path) ->    
+qualified_parent([Node|[]],_Sep,Path) ->    
     lists:flatten([Node|Path]);
 qualified_parent([Node|Nodes],Sep,Path) ->    
     qualified_parent(Nodes,Sep,[[Sep|Node]|Path]).

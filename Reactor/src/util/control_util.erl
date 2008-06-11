@@ -22,7 +22,7 @@
 -include("system.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
--export([add/2,add/3,remove/2,remove/3,delete/1,delete/2,q/2,q/3,indexes/0,create_control/0,reset_control/0]).
+-export([add/2,add/3,remove/2,remove/3,delete/1,delete/2,inherit/3,q/2,q/3,indexes/0,create_control/0,reset_control/0]).
 %-record(control,{id,iid,lid,controls})
 
 add(Id,Control) -> %short cut when control.uid known
@@ -230,6 +230,24 @@ remove(Iid,Lid,Control) ->
 	    {ok,Id};
 	_ -> 
 	    {error,error({"Cannot remove " ++ atom_to_list(Control) ++", control not found for ",Iid,Lid})}
+    end.
+
+inherit(Iid,Lid,Parentid) ->
+    F = fun() -> 
+		case qlc:e(qlc:q([X || X <- mnesia:table(control),
+						  X#control.lid =:= Parentid])) of
+		    [] -> 
+			0;
+		    Controls -> 
+			lists:foreach(fun(C) -> mnesia:write(C#control{id=uid(),lid=Lid}) end,Controls),
+			1
+		end
+	end,
+    case mnesia:transaction(F) of
+	{atomic,Id} -> 
+	    {ok,Id};
+	_ -> 
+	   {error,error({"Cannot inherit controls ",Iid, Lid,Parentid})}
     end.
 
 % both return either [] or [Qitems]

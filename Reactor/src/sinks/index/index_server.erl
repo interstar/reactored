@@ -31,7 +31,7 @@
 %% API
 -export([start_link/0]).
 -export([start/0,stop/0]).
--export([sink/1,profile/1,search/1,tagged/1,tagged/2,controls/2,controls/3,add_controls/3,remove_controls/3,delete_controls/1,get_index_id/1]).
+-export([sink/1,profile/1,search/1,tagged/1,tagged/2,controls/2,controls/3,grant/3,revoke/3,inherit/3,delete_controls/1,get_index_id/1]).
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
@@ -55,10 +55,12 @@ controls(Iuri,Uri) ->
     gen_server:call(?MODULE,{controls,Iuri,Uri}).
 controls(Iuri,Command,Lids) -> 
     gen_server:call(?MODULE,{controls,Iuri,Command,Lids}).
-add_controls(Iuri,Uri,Commands) ->
-    gen_server:call(?MODULE,{controls,add,Iuri,Uri,Commands}).
-remove_controls(Iuri,Uri,Commands) ->
-    gen_server:call(?MODULE,{controls,remove,Iuri,Uri,Commands}).
+grant(Iuri,Uri,Commands) ->
+    gen_server:call(?MODULE,{controls,grant,Iuri,Uri,Commands}).
+revoke(Iuri,Uri,Commands) ->
+    gen_server:call(?MODULE,{controls,revoke,Iuri,Uri,Commands}).
+inherit(Iuri,Uri,Parent) ->
+    gen_server:call(?MODULE,{controls,inherit,Iuri,Uri,Parent}).
 delete_controls(Iuri) ->
     gen_server:call(?MODULE,{controls,delete,Iuri}).
     
@@ -104,6 +106,7 @@ handle_call({sink,Action}, _From, State) ->
 		     % Domain based re-index, need to be careful with this, won't handle deleted indexes that may be left in the search index for that domain, although that shouldn't happen of course!
 		     reindex_domain(Action#item.description);
 		 delete -> 
+		     %% need to make sure we differentiate attribute deletion/update from item deletions.
 		     search_util:delete(Action#item.xref),
 		     tag_util:delete(Action#item.xref), 
 		     control_util:delete(Action#item.xref);
@@ -143,11 +146,14 @@ handle_call({controls,Iuri,Uri}, _From, State) ->
 handle_call({controls,Iuri,Command,Lids}, _From, State) ->
     Reply = control_util:q(get_index_id(Iuri),Command,Lids),
     {reply, Reply, State};
-handle_call({controls,add,Iuri,Uri,Commands}, _From, State) ->
+handle_call({controls,grant,Iuri,Uri,Commands}, _From, State) ->
     Reply = control_util:add(get_index_id(Iuri),get_index_id(Uri),Commands),
     {reply, Reply, State};
-handle_call({controls,remove,Iuri,Uri,Commands}, _From, State) ->
+handle_call({controls,revoke,Iuri,Uri,Commands}, _From, State) ->
     Reply = control_util:remove(get_index_id(Iuri),get_index_id(Uri),Commands),
+    {reply, Reply, State};
+handle_call({controls,inherit,Iuri,Uri,Parent}, _From, State) ->
+    Reply = control_util:inherit(get_index_id(Iuri),get_index_id(Uri),get_index_id(Parent)),
     {reply, Reply, State};
 
 handle_call(stop, _From, State) ->
