@@ -72,6 +72,7 @@ start_link() ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
+    io:format("~p starting~n",[?MODULE]),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -83,15 +84,15 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({put,?SYSTEM,Sink,Data}, _From, State) ->
+handle_call({put,?DOMAIN ++ ?CONTEXT ++ ?SYSTEM,Sink,Data}, _From, State) ->
     Id = queue_util:id(),
-    Queue = ?SYSTEM,
+    Queue = ?DOMAIN ++ ?CONTEXT ++ ?SYSTEM,
     Reply = queue_util:add(Queue,Sink,Id,Data),
     sink_server:nudge(Queue),
     {reply, Reply, State};
 handle_call({put,Source,Sink,Data}, _From, State) ->
     Id = queue_util:id(),
-    Queue = ?QUEUE ++ Source,
+    Queue = ?DOMAIN ++ ?CONTEXT ++ ?QUEUE ++ Source,
     Reply = queue_util:add(Queue,Sink,Id,Data),
     sink_server:nudge(Queue),
     {reply, Reply, State};

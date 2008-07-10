@@ -17,6 +17,8 @@
 %%     Further information about Reactored and it's ideas can be found at
 %%     http://www.Reactored.org/
 
+-record(config,{domain,email,password,branches}).
+-record(branch,{name,type,matcher,description}).
 -record(domain,{domain,owner,matcher}).
 -record(item,{item,uri,created,modified,domain,title,description,author,type,status,users,groups,revision,sync,xref}).
 -record(attribute,{id,item,name,value}).
@@ -24,7 +26,8 @@
 -record(words,{id,word,lid,score}).
 -record(tags,{id,author,tag,lid}).
 -record(control,{id,iid,lid,types}).
--record(identity,{id,uri,email,nick,pswd}).
+-record(identity,{id,uri,email,nick,pswd,token}).
+-record(usession,{userid,actor,ts}).
 -define(OWNER,"reactored.com").
 -define(DOMAINSEPERATOR,"|").
 
@@ -33,9 +36,19 @@
 % I would like to rename some of the item record atoms"
 %% description -> content
 %% author -> creator
-%% users -> members
+%% users ->  related 
 %% groups -> affiliations/affinities can be groups,categories,tags,relations etc..
 
+%% new item attributes - triples
+%% X -> v1 -> number()
+%% Y -> v2 -> number()
+%% z -> v3 -> number()
+%% Scenarios :
+%% {X,Y,Z} = {It#item.x,It#item.y,It#item.z} where is_position(It);
+%% {Price,Tax,Quantity} = {It#item.x,It#item.y,It#item.z} where is_product(It);
+%% {Credit,Debit,Currency} = {It#item.x,It#item.y,It#item.z} where is_ledger(It);
+%% {Start,End,Repeat} = {It#item.x,It#item.y,It#item.z} where is_event(It);
+%% {Start,End,Rate} = {It#item.x,It#item.y,It#item.z} where is_timesheet(It);
 
 % will neet to add the following to attribute server
 % cache:update(Domain,Item,Status)

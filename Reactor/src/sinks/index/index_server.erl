@@ -31,7 +31,7 @@
 %% API
 -export([start_link/0]).
 -export([start/0,stop/0]).
--export([sink/1,profile/1,search/1,tagged/1,tagged/2,controls/2,controls/3,grant/3,revoke/3,inherit/3,delete_controls/1,get_index_id/1]).
+-export([sink/1,profile/1,tag/3,search/1,tagged/1,tagged/2,controls/2,controls/3,grant/3,revoke/3,inherit/3,delete_controls/1,get_index_id/1]).
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
@@ -47,6 +47,8 @@ profile(Profile) ->
     gen_server:call(?MODULE,{profile,Profile}).
 search(Text) ->
     gen_server:call(?MODULE,{search,Text}).
+tag(Author,Resource,Tags) ->
+    gen_server:call(?MODULE,{tag,Tags,Author,Resource}).
 tagged(Tags) ->
     gen_server:call(?MODULE,{tagged,Tags}).
 tagged(Tags,Author) ->
@@ -85,6 +87,7 @@ start_link() ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
+    io:format("~p starting~n",[?MODULE]),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -98,26 +101,28 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({sink,Action}, _From, State) ->
     Result = case Action#item.title of
-		 tag -> tag_util:add(get_index_id(Action#item.author),
+		 %% Todo remove - Tag is probably redundant now, implemented at Actor_server level
+		 "tag" -> tag_util:add(get_index_id(Action#item.author),
 				     Action#item.xref, % set by tagger domain, fetched from attribute_server for that item
 				     Action#item.description), 
 		     {error,"Tags not yet implemented"};
-		 reindex -> 
+		 "reindex" -> 
 		     % Domain based re-index, need to be careful with this, won't handle deleted indexes that may be left in the search index for that domain, although that shouldn't happen of course!
 		     reindex_domain(Action#item.description);
-		 delete -> 
+		 "delete" -> 
 		     %% need to make sure we differentiate attribute deletion/update from item deletions.
 		     search_util:delete(Action#item.xref),
 		     tag_util:delete(Action#item.xref), 
 		     control_util:delete(Action#item.xref);
-		 create ->
+		 "create" ->
 		     search_util:index(Action#item.xref,Action#item.description);
-		 update ->
+		 "update" ->
 		     search_util:update(Action#item.xref,Action#item.description);
 		 Command ->
-		     {error,error("Index doesn't understand command " ++ atom_to_list(Command))}
+		     {error,error("Indexserver doesn't understand sink command " ++ Command)}
     end,
     Reply = case Result of
+		ok -> ok;
 	[_Indexed] -> ok; %Indexed
 	{ok,_Sid} -> ok;%Indexed single action
 	{atomic,ok} -> ok; %removed from index
@@ -126,7 +131,7 @@ handle_call({sink,Action}, _From, State) ->
     {reply, Reply, State};
 
 handle_call({search,Text}, _From, State) ->
-    Reply = search_util:search_words(Text),
+    Reply = search_util:retrieve(Text),
     {reply, Reply, State};
 handle_call({profile,Profile}, _From, State) ->
     Reply = control_util:q(identity,get_index_id(Profile)),
@@ -136,6 +141,9 @@ handle_call({tagged,Tags}, _From, State) ->
     {reply, Reply, State};
 handle_call({tagged,Tags,Author}, _From, State) ->
     Reply = tag_util:retrieve(Tags,Author),
+    {reply, Reply, State};
+handle_call({tag,Tags,Author,Resource}, _From, State) ->
+    Reply = tag_util:add(Author,get_index_id(Resource),Tags),
     {reply, Reply, State};
 handle_call({controls,delete,Iuri}, _From, State) ->
     Reply = control_util:delete(identity,get_index_id(Iuri)),

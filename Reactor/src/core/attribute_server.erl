@@ -89,8 +89,6 @@ log_state() ->
 %%--------------------------------------------------------------------
 init([]) ->
     io:format("~p starting~n",[?MODULE]),
-    mnesia:start(),
-    mnesia:wait_for_tables([domain,item,attribute],1000),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------

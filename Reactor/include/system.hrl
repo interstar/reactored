@@ -17,11 +17,26 @@
 %%     Further information about Reactored and it's ideas can be found at
 %%     http://www.Reactored.org/
 
--define(SYSTEM,"system.reactored.com/queue/system/").
--define(QUEUE,"system.reactored.com/queue/").
+-define(SINKS,"/sink").
 -define(ERRORMATCHER,matcher).
 -define(ERRORSINKER,sinker).
 -define(DEFAULTIDADAPTOR,identity_adaptor).
--define(SUMCHARS,256).
--define(IDS,"Users/").
--define(SINKS,"/Sinks"). % TODO change this to "Sinks/"
+-define(SUMCHARS,256). %% Todo this may now be redundant
+-define(ALLPRIVS,"retrieve,update,delete,create,grant,revoke").
+-define(LOGIN,"<form id='login' method='post'><input name='identity' value='identity''/><br/><input password='' type='password' name='password'/><input type='submit' value='login'/></form>").
+-define(COOKIE,"UserId").
+% 90 days cookie timeout.
+-define(MAXAGE,7776000). 
+% Summary text length for list views
+-define(MAXCHARS,256).
+% This is for administrative web functions, which can differ from the main REST server, the example here uses a domain only accessable locally on the system which is more secure.
+-define(DOMAIN,"alan-woods-macbook.local:8000"). 
+-define(DOCROOT,"/Users/awood/www").
+-define(CONTEXT,"/reactor/").
+-define(SYSTEM,"_/queue/system").
+-define(QUEUE,"_/queue").
+-define(DOMAINS,"_").
+-define(IDENTITIES,"_/id").
+-define(ACLS,"_/acl").
+
+%  -define(IDS,"Users/"). todo is this replication of identities -> redundant now

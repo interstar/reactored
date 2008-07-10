@@ -30,17 +30,17 @@ add(Id,Control) -> %short cut when control.uid known
 		[Cntrl] = mnesia:read({control,Id}),
 		case lists:member(Control,Cntrl#control.types) of
 		    true -> 
-			Cntrl#control.id;
+			{Cntrl#control.id,Cntrl#control.types};
 		    false -> 
 			Ucntrls = [Control|Cntrl#control.types],
 			Ucntrl = Cntrl#control{types=Ucntrls},
 			mnesia:write(Ucntrl),
-			Cntrl#control.id
+			{Cntrl#control.id,Ucntrls}
 		end
 	end,
     case mnesia:transaction(F) of
-	{atomic,Id} -> 
-	    {ok,Id};
+	{atomic,Iacl} -> 
+	    {ok,Iacl};
 	_ -> 
 	    {error,error({"Cannot add " ++ atom_to_list(Control) ++", control not found for id ", Id})}
     end.
@@ -53,16 +53,17 @@ add(Iid,Lid,Control) when is_list(Control)->
 						  X#control.lid =:= Lid])) of
 		    [] -> 
 			mnesia:write({control,Uid,Iid,Lid,Control}),
-			Uid;
+			{Uid,Control};
 		    Controls -> 
 			Cntrl = hd(Controls),
-			mnesia:write(Cntrl#control{types=lists:usort(Control ++ Cntrl#control.types)}),
-			Cntrl#control.id
+			Cntrls = lists:usort(Control ++ Cntrl#control.types),
+			mnesia:write(Cntrl#control{types=Cntrls}),
+			{Cntrl#control.id,Cntrls}
 		end
 	end,
     case mnesia:transaction(F) of
-	{atomic,Id} -> 
-	    {ok,Id};
+	{atomic,Iacl} -> 
+	    {ok,Iacl};
 	_ -> 
 	   {error,error({"Cannot add controls ",Control,Iid, Lid})}
     end;
@@ -75,23 +76,23 @@ add(Iid,Lid,Control) ->
 						  X#control.lid =:= Lid])) of
 		    [] -> 
 			mnesia:write({control,Uid,Iid,Lid,[Control]}),
-			Uid;
+			{Uid,[Control]};
 		    Controls -> 
 			Cntrl = hd(Controls),
 			case lists:member(Control,Cntrl#control.types) of
 			    true -> 
-				Cntrl#control.id;
+				{Cntrl#control.id,Cntrl};
 			    false -> 
 				Ucntrls = [Control|Cntrl#control.types],
 				Ucntrl = Cntrl#control{types=Ucntrls},
 				mnesia:write(Ucntrl),
-				Cntrl#control.id
+				{Cntrl#control.id,Ucntrls}
 			end
 		end
 	end,
     case mnesia:transaction(F) of
-	{atomic,Id} -> 
-	    {ok,Id};
+	{atomic,Iacl} -> 
+	    {ok,Iacl};
 	_ -> 
 	   {error,error({"Cannot add " ++ atom_to_list(Control) ++", control not found for  ",Iid, Lid})}
     end.
@@ -169,17 +170,17 @@ remove(Id,Control) ->
 		[Cntrl] = mnesia:read({control,Id}),
 		case lists:member(Control,Cntrl#control.types) of
 		    false -> 
-			Cntrl#control.id;
+			{Cntrl#control.id,Cntrl#control.types};
 		    true -> 
 			Ucntrls = lists:delete(Control, Cntrl#control.types),
 			Ucntrl = Cntrl#control{types=Ucntrls},
 			mnesia:write(Ucntrl),
-			Cntrl#control.id
+			{Cntrl#control.id,Ucntrls}
 		end
 	end,
     case mnesia:transaction(F) of
-	{atomic,Id} -> 
-	    {ok,Id};
+	{atomic,Iacl} -> 
+	    {ok,Iacl};
 	_ -> 
 	    {error,error({"Cannot remove " ++ atom_to_list(Control) ++", control not found for id ",Id})}
     end.
@@ -193,13 +194,14 @@ remove(Iid,Lid,Control) when is_list(Control) ->
 			{error};
 		    Controls -> 
 			Cntrl = hd(Controls),
-			mnesia:write(Cntrl#control{types=Cntrl#control.types -- Control}),
-			Cntrl#control.id
+			Cntrls = Cntrl#control.types -- Control,
+			mnesia:write(Cntrl#control{types=Cntrls}),
+			{Cntrl#control.id,Cntrls}
 		end
 	end,
     case mnesia:transaction(F) of
-	{atomic,Id} -> 
-	    {ok,Id};
+	{atomic,Iacl} -> 
+	    {ok,Iacl};
 	_ -> 
 	    {error,error({"Cannot remove controls ",Control,Iid,Lid})}
     end;
@@ -216,18 +218,18 @@ remove(Iid,Lid,Control) ->
 			Cntrl = hd(Controls),
 			case lists:member(Control,Cntrl#control.types) of
 			    false -> 
-				Cntrl#control.id;
+				{Cntrl#control.id,Cntrl#control.types};
 			    true -> 
 				Ucntrls = lists:delete(Control, Cntrl#control.types),
 				Ucntrl = Cntrl#control{types=Ucntrls},
 				mnesia:write(Ucntrl),
-				Cntrl#control.id
+				{Cntrl#control.id,Ucntrls}
 			end
 		end
 	end,
     case mnesia:transaction(F) of
-	{atomic,Id} -> 
-	    {ok,Id};
+	{atomic,Iacl} -> 
+	    {ok,Iacl};
 	_ -> 
 	    {error,error({"Cannot remove " ++ atom_to_list(Control) ++", control not found for ",Iid,Lid})}
     end.
@@ -288,6 +290,17 @@ q(Iid,Lid) -> % returns list of controls i.e. [retrieve,create,update,delete,]
 	{atomic,Results} -> 
 	    lists:flatten(Results)
     end.
+
+q(Iid,Control,Lids) when is_tuple(hd(Lids)) -> % returns Lids that have Command entries  with Iduris of iid
+    F = fun() -> 
+		lists:map(fun({D,L}) -> {D,hd(controls(Iid,Control,L))} end,Lids)
+	end,
+    case mnesia:transaction(F) of
+	{atomic,[]} -> 
+	    [];
+	{atomic,Results} -> 
+	    lists:flatten(Results)
+    end;
 
 q(Iid,Control,Lids) -> % returns Lids that have Command entries  with Iduris of iid
     F = fun() -> 

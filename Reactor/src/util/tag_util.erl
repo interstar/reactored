@@ -42,19 +42,28 @@ retrieve(Tags,Author) ->
 
 save_tags(TagRecs) ->
     F = fun() -> lists:foreach(fun mnesia:write/1,TagRecs) end,
-    mnesia:transaction(F),
-    TagRecs.
+    case mnesia:transaction(F) of
+	{atomic,_} -> 
+	    {ok,tagrec_to_tags(TagRecs)};
+	{error,Error} ->
+	    {error,Error}
+    end.
 
 find_tagged(Tag) ->
-    do(qlc:q([{X#tags.lid,X#tags.tag} || X <- mnesia:table(tags),
+    do(qlc:q([{X#tags.tag,X#tags.lid} || X <- mnesia:table(tags),
 						X#tags.tag =:= Tag])).
+
+find_tagged([],Author) ->
+    do(qlc:q([{X#tags.tag,X#tags.lid} || X <- mnesia:table(tags),
+					 X#tags.author =:= Author]));
 find_tagged(Tag,Author) ->
-    do(qlc:q([{X#tags.lid,X#tags.tag} || X <- mnesia:table(tags),
+    do(qlc:q([{X#tags.tag,X#tags.lid} || X <- mnesia:table(tags),
 					 X#tags.author =:= Author,
 					 X#tags.tag =:= Tag])).
 
-tags(Text) ->
-    search_util:words(string:to_lower(Text)).
+
+tags(Tags) ->
+    lists:map(fun string:to_lower/1,Tags).
 				
 create_tags() ->
     mnesia:delete_table(tags),
@@ -92,3 +101,10 @@ do(Q) ->
 
 uid() ->
     search_util:uid().
+
+tagrec_to_tags(TagRecs) ->
+    tagrec_to_tags(TagRecs,[]).
+
+tagrec_to_tags([{tags,_Id,_author,Tag,_lid}|TagRecs],Tags) ->
+    tagrec_to_tags(TagRecs,[Tag|Tags]);
+tagrec_to_tags([],Tags) -> lists:reverse(Tags).

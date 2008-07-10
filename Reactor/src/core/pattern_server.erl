@@ -65,6 +65,7 @@ start_link() ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
+    io:format("~p starting~n",[?MODULE]),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -135,7 +136,7 @@ code_change(_OldVsn, State, _Extra) ->
 queue({nomatch})->
     void;
 queue({Sink,Data})->
-    case queue_server:add(?SYSTEM,Sink,Data) of
+    case queue_server:add(?DOMAIN ++ ?CONTEXT ++ ?SYSTEM,Sink,Data) of
 	{ok,Xref} -> Xref;
 	{error,Why} -> error({"Error putting on system queue",Why,{Sink,Data}})
     end;
@@ -147,7 +148,7 @@ match(Actor,Service,Command,Domain,Resource,Params) ->
     matching(Actor,Service,Command,Domain,Resource,Params)]).
 
 matching(Actor,Service,create,Domain,Resource,Params) ->
-    policy:create(Actor,Service,create,Domain,Resource,Params),
+    policy:create(Actor,Service,Domain,Resource,Params),
     pattern_matcher:write(Actor,Service,create,Domain,Resource,Params);
 matching(Actor,Service,Command,Domain,Resource,Params) when Command =:= update;Command =:= delete ->
     pattern_matcher:write(Actor,Service,Command,Domain,Resource,Params);

@@ -69,7 +69,8 @@ start_link() ->
 init([]) ->
     monostable:start(?MODULE,fetch,10000),
     Queues = ets:new(?MODULE,[]),
-    ets:insert(Queues,{?SYSTEM,0}),
+    ets:insert(Queues,{?DOMAIN ++ ?CONTEXT ++ ?SYSTEM,0}),
+    io:format("~p starting~n",[?MODULE]),
     {ok, Queues}.
 
 %%--------------------------------------------------------------------

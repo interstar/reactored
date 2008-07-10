@@ -46,11 +46,11 @@
 retrieve() ->
     gen_server:call(?MODULE,{get}).
 create(Domain,Matcher,Owner) ->
-    gen_server:call(?MODULE,{new,Domain,Matcher,Owner}).
+    gen_server:call(?MODULE,{put,Domain,Matcher,Owner}).
 retrieve(Domain) ->
     gen_server:call(?MODULE,{get,Domain}).
 delete(Domain) ->
-    gen_server:call(?MODULE,{remove,Domain}).
+    gen_server:call(?MODULE,{delete,Domain}).
 
 % Operational match API
 match(Actor,Service,Command,Domain,Resource,Params) ->
@@ -77,6 +77,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
+    io:format("~p starting~n",[?MODULE]),
     {ok, ets:new(?MODULE,[])}.
 
 %%--------------------------------------------------------------------

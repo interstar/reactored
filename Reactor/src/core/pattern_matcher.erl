@@ -25,11 +25,11 @@ all(Actor,Service,autherror,Domain,Resource,Params) ->
     error_logger:error_msg("Pattern Match - Authentication error ~p~n",[{Actor,Service,autherror,Domain,Resource,Params}]),
 	{nomatch};
 %% this matcher is called for all operations
-all(Actor,Service,Command,Domain,Resource,Params) ->
+all(_Actor,_Service,_Command,_Domain,_Resource,_Params) ->
 	   {nomatch}.
 
 %% This matcher is only called on read operations
-read(Actor,Service,Command,Domain,Resource,Params) ->
+read(_Actor,_Service,_Command,_Domain,_Resource,_Params) ->
 	   {nomatch}.
 
 %% This matcher is only called on write operations
@@ -42,12 +42,12 @@ write(Actor,Service,Command,Domain,Resource,Params) ->
 
 audit(Actor,Service,Command,Domain,Resource,Params) ->
     Data = [{"title",Resource},
-	    {"description", string:join([Domain,atom_to_list(Service),atom_to_list(Command),Resource,params_to_string(",",Params)],",") },
+	    {"description", string:join([Domain,atom_to_list(Service),atom_to_list(Command),Resource,attribute:params_to_string(",",Params)],",") },
 	    {"author",Actor},
 	    {"type","audit"}],
    {audit,Data}.
 
-index(Actor,Service,Command,Domain,Resource,Params) ->
+index(Actor,_Service,Command,Domain,Resource,Params) ->
     Qitem = case Domain of
 		[] -> 
 		    Resource;
@@ -55,32 +55,10 @@ index(Actor,Service,Command,Domain,Resource,Params) ->
 		    attribute:item_id(Domain,Resource)
 	    end,
     {_,Xref} = proplists:lookup("xref",Params),
-    Data = [{"title",Command},
+    Data = [{"title",atom_to_list(Command)},
 	    {"description",Qitem},
 	    {"author",Actor},
 	    {"type","index"},
 	    {"xref",Xref}],
    {index,Data}.
 
-%% Utility functions
-params_to_string(Sep,Params) ->
-    params_to_string(Sep,Params,[]).
-params_to_string(Sep,[{K,V}],Out) ->
-    params_to_string(Sep,[],[K ++ "=" ++ s(V) |Out]);
-params_to_string(Sep,[{K,V,_Replace}],Out) ->
-    params_to_string(Sep,[],[K ++ "=" ++ s(V) |Out]);
-params_to_string(Sep,[K],Out) ->
-    params_to_string(Sep,[],[K |Out]);
-params_to_string(Sep,[{K,V}|Params],Out) ->
-    params_to_string(Sep,Params,[K ++ "=" ++ s(V) ++ Sep |Out]);
-params_to_string(Sep,[{K,V,_Replace}|Params],Out) ->
-    params_to_string(Sep,Params,[K ++ "=" ++ s(V) ++ Sep |Out]);
-params_to_string(Sep,[K|Params],Out) ->
-    params_to_string(Sep,Params,[K ++ Sep |Out]);
-params_to_string(_Sep,[],Out) -> lists:flatten(lists:reverse(Out)).
-
-
-s(V) when is_list(V) ->
-     V;
-s(V) ->
-    io_lib:format("~p",[V]).

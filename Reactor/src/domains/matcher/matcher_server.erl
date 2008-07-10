@@ -65,6 +65,7 @@ start_link() ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
+    io:format("~p starting~n",[?MODULE]),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -78,7 +79,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({match,Actor,Service,Command,Domain,Resource,Params}, _From, State) ->
     %% Split to all, writes and read call matching actions
-    io:format("Default Matched ~p",[{Actor,Service,Command,Domain,Resource,Params}]),
+    io:format("Default Matched ~p~n",[{Actor,Service,Command,Domain,Resource,Params}]),
     Reply = process(Actor,Service,Command,Domain,Resource,Params),
     {reply, Reply, State};
 handle_call(stop, _From, State) ->

@@ -41,7 +41,7 @@ start(Plugin) ->
 	ok -> {ok,Plugin};
 	{error,{already_started,matcher}} -> Plugin;
 	{error,_Why} -> 
-	    error({"Plugin not started",Plugin}),
+	    error({"Plugin not started (may already be running) ",Plugin}),
 	   {error} %flag an error?
     end.
 

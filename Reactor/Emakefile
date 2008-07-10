@@ -19,6 +19,7 @@
 
 {"src/*", [debug_info, {outdir, "ebin"}, {i,"include"}]}.
 {"src/util/*", [debug_info, {outdir, "ebin"}, {i,"include"}]}.
+{"src/rest/*", [debug_info, {outdir, "ebin"}, {i,"include"}]}.
 {"src/domains/*", [debug_info, {outdir, "ebin"}, {i,"include"}]}.
 {"src/domains/matcher/*", [debug_info, {outdir, "ebin"}, {i,"include"}]}.
 {"src/sinks/*", [debug_info, {outdir, "ebin"}, {i,"include"}]}.

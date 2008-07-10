@@ -19,6 +19,7 @@
 
 -module(attribute).
 -include("schema.hrl").
+-include("system.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
@@ -36,7 +37,9 @@
 	 move/3,
 	 graph/3,
 	 domain_from_qitem/1,
-	 item_id/2
+	 item_id/2,
+	 parent/1,parent/2,
+	 ts/0,today/0,params_to_string/2
 	]).
 
 %%
@@ -87,8 +90,11 @@ retrieve(Qitem) when is_list(Qitem) ->
 		lists:flatten(Attributes,retrieve(Qitem, extended));
 	[] -> retrieve(Qitem, extended)
     end;
-retrieve({raw,Qitem})  -> 
+retrieve({raw,Qitem}) when is_list(Qitem)  -> 
     retrieve(Qitem, raw);
+
+retrieve({uri,Uri}) when is_list(Uri)  -> 
+    retrieve(Uri, byuri);
 
 retrieve(Ref)  -> 
     retrieve(Ref, byref).
@@ -96,6 +102,10 @@ retrieve(Ref)  ->
 retrieve(Ref, byref) -> 
     do(qlc:q([X || X <- mnesia:table(item),
 		   X#item.xref =:= Ref]));
+retrieve(Uri, byuri) -> 
+    do(qlc:q([X || X <- mnesia:table(item),
+		   X#item.uri =:= Uri]));
+
 retrieve(Qitem, raw) -> 
     F = fun() ->
 		mnesia:read({item,Qitem})
@@ -212,6 +222,8 @@ q(Domain) ->
 		     X#item.domain =:= Domain,
 		     Z#attribute.item =:= X#item.item ])).
 
+q(Domain,[]) ->
+    q(Domain,[{"status","all"}]);
 
 q(Domain,[{"status","all"}]) ->
     do(qlc:q([X || X <- mnesia:table(item),
@@ -224,14 +236,14 @@ q(Domain,[{"from",From}]) ->
     After = date_to_integer(From),
     do(qlc:q([X || X <- mnesia:table(item),
 		   X#item.domain =:= Domain,
-		   X#item.modified >= After]));
+		   X#item.created >= After]));
 q(Domain,[{"from",From},{"to",To}]) ->
     After = date_to_integer(From),
     Before = date_to_integer(To),
     do(qlc:q([X || X <- mnesia:table(item),
 		   X#item.domain =:= Domain,
-		   X#item.modified >= After,
-		   X#item.modified =< Before])).
+		   X#item.created >= After,
+		   X#item.created =< Before])).
 
 q(Domain, null, Options) -> {error,"Not Implemented"};
 q(Domain, qExp, Options) -> {error,"Not Implemented"}.
@@ -436,11 +448,11 @@ ensure_item(Domain,Item,Now) ->
 				 modified=Now,
 				 domain=Domain,title=["New"],
 				 description=["Created"],
-				 author=["/system"],
-				 type=["text"],
+				 author=[Domain ++ ?IDENTITIES ++ "/founder"],
+				 type=["plain/text"],
 				 status=["live"],
-				 users=["identity.rel3.com/admin"],
-				 groups=["identity.rel3.com/groups/administrators"],
+				 users=[Domain ++ ?IDENTITIES ++ "/founder"],
+				 groups=["/founders"],
 				 revision=0,
 				 sync=cache,
 				xref=Now});
@@ -522,9 +534,17 @@ store_attribute(Domain,Item,{write,item,"groups",Attributes}) ->
     Nit = It#item{groups=merge_attributes(Attributes,It#item.groups)}, 
     mnesia:write(Nit);
 
+store_attribute(Domain,Item,{update,item,"created",Attributes}) when is_list(Attributes) ->
+    [It] = mnesia:read({item,item_id(Domain,Item)}),
+    Nit = It#item{created=to_i(Attributes)}, 
+    mnesia:write(Nit);
 store_attribute(Domain,Item,{update,item,"created",Attributes}) ->
     [It] = mnesia:read({item,item_id(Domain,Item)}),
     Nit = It#item{created=Attributes}, 
+    mnesia:write(Nit);
+store_attribute(Domain,Item,{update,item,"modified",Attributes}) when is_list(Attributes) ->
+    [It] = mnesia:read({item,item_id(Domain,Item)}),
+    Nit = It#item{modified=to_i(Attributes)}, 
     mnesia:write(Nit);
 store_attribute(Domain,Item,{update,item,"modified",Attributes}) ->
     [It] = mnesia:read({item,item_id(Domain,Item)}),
@@ -589,9 +609,17 @@ store_attribute(Qitem,{write,item,"groups",Attributes}) ->
     Nit = It#item{groups=merge_attributes(Attributes,It#item.groups)}, 
     mnesia:write(Nit);
 
+store_attribute(Qitem,{update,item,"created",Attributes}) when is_list(Attributes) ->
+    [It] = mnesia:read({item,Qitem}),
+    Nit = It#item{created=to_i(Attributes)}, 
+    mnesia:write(Nit);
 store_attribute(Qitem,{update,item,"created",Attributes}) ->
     [It] = mnesia:read({item,Qitem}),
     Nit = It#item{created=Attributes}, 
+    mnesia:write(Nit);
+store_attribute(Qitem,{update,item,"modified",Attributes}) when is_list(Attributes) ->
+    [It] = mnesia:read({item,Qitem}),
+    Nit = It#item{modified=to_i(Attributes)}, 
     mnesia:write(Nit);
 store_attribute(Qitem,{update,item,"modified",Attributes}) ->
     [It] = mnesia:read({item,Qitem}),
@@ -673,4 +701,57 @@ string_to_int(S) ->
     case io_lib:fread("~u", S) of
 	 {ok, [Num], _} -> Num;
 	{error,{_,Error}} -> 0
+    end.
+
+parent(Item) ->
+    [_Node|Nodes] = lists:reverse(string:tokens(Item,"/")),
+    case Nodes of
+	[] ->
+	    "/";
+	Ns ->
+	    parent(Ns,$/,[])
+    end.
+
+parent(Domain,Item) ->
+    [_Node|Nodes] = lists:reverse(string:tokens(Item,"/")),
+    case Nodes of
+	[] ->
+	    attribute:item_id(Domain,"/");
+	Ns ->
+	    attribute:item_id(Domain,parent(Ns,$/,[]))
+    end.
+
+parent([],_Sep,Path) ->    
+    lists:flatten(Path);
+parent([Node|Nodes],Sep,Path) ->    
+    parent(Nodes,Sep,[[Sep|Node]|Path]).
+
+params_to_string(Sep,Params) ->
+    params_to_string(Sep,Params,[]).
+params_to_string(Sep,[{K,V}],Out) ->
+    params_to_string(Sep,[],[K ++ "=" ++ s(V) |Out]);
+params_to_string(Sep,[{K,V,_Replace}],Out) ->
+    params_to_string(Sep,[],[K ++ "=" ++ s(V) |Out]);
+params_to_string(Sep,[K],Out) ->
+    params_to_string(Sep,[],[K |Out]);
+params_to_string(Sep,[{K,V}|Params],Out) ->
+    params_to_string(Sep,Params,[K ++ "=" ++ s(V) ++ Sep |Out]);
+params_to_string(Sep,[{K,V,_Replace}|Params],Out) ->
+    params_to_string(Sep,Params,[K ++ "=" ++ s(V) ++ Sep |Out]);
+params_to_string(Sep,[K|Params],Out) ->
+    params_to_string(Sep,Params,[K ++ Sep |Out]);
+params_to_string(_Sep,[],Out) -> lists:flatten(lists:reverse(Out) ++ "\n").
+
+
+s(V) when is_list(V) ->
+     V;
+s(V) ->
+    io_lib:format("~p",[V]).
+
+to_i(S) ->
+    case string:to_integer(S) of 
+	{error,_} ->
+	    0;
+	{I,_} ->
+	    I
     end.

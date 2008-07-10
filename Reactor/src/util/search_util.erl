@@ -21,7 +21,6 @@
 -include("schema.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 -export([create_words/0,reset_words/0,add_words/2,retrieve/1,delete/1,update/2,words/1,all/0,index/1,index/2,prep/1,indexes/0,uid/0]).
--define(DOMAIN,"search.rel3.com").
 -define(MINWORDSIZE,4).
 
 excluded_words() ->
@@ -68,6 +67,7 @@ update(Sid,Url) ->
 
 retrieve(Query) ->
     order_by_score(lists:sort(lists:flatten(lists:map(fun search_word/1,words(string:to_lower(Query)))))).
+
 	
 index([]) ->
     {error,"nothing to index"};

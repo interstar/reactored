@@ -37,7 +37,7 @@ create(Domain,Matcher,Owner) ->
 	add_domain(Domain,Matcher,Owner).
 
 %%
-retrieve() -> do(qlc:q([X#domain.domain || X <- mnesia:table(domain)])).
+retrieve() -> do(qlc:q([{X#domain.domain,X#domain.matcher} || X <- mnesia:table(domain)])).
 	
 retrieve(Domain) -> 
    F = fun() -> mnesia:read({domain,Domain}) end,

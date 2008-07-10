@@ -25,7 +25,7 @@
 %%% Created : 22 May 2008 by Alan Wood <awood@alan-woods-macbook.local>
 %%%-------------------------------------------------------------------
 -module(reactor_supervisor).
-
+-include("system.hrl").
 -behaviour(supervisor).
 
 %% API
@@ -70,6 +70,11 @@ start_link(Args) ->
 %% specifications.
 %%--------------------------------------------------------------------
 init([]) ->
+     Ip = case os:getenv("REACTORED_IP") of false -> "0.0.0.0"; Any -> Any end,   
+    WebConfig = [{ip, Ip},
+                 {port, 8000},
+                 {docroot, ?DOCROOT}],
+
     Storage = {storage,{attribute_server,start_link,[]},
 	      permanent,2000,worker,[attribute_server]},
     Sinks = {sinks,{sink_server,start_link,[]},
@@ -86,7 +91,9 @@ init([]) ->
 	      permanent,2000,worker,[identity_server]},
     Actor = {actors,{actor_server,start_link,[]},
 	      permanent,2000,worker,[actor_server]},
-    {ok,{{one_for_one,3,10}, [Storage,Sinks,Actions,Queues,Domains,Patterns,Identity,Actor]}}.
+    Web = {web,{rest_server,start,[WebConfig]},
+	      permanent,2000,worker,[rest_server]},
+    {ok,{{one_for_one,3,10}, [Storage,Sinks,Actions,Queues,Domains,Patterns,Identity,Actor,Web]}}.
 
 %%====================================================================
 %% Internal functions

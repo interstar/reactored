@@ -32,7 +32,7 @@
 %% API
 -export([start_link/0]).
 -export([start/0,stop/0]).
--export([authenticate/2,create/3,delete/1,filter/4,authorise/4,controls/4]).
+-export([authenticate/2,create/3,delete/1,tag/3,filter/4,authorise/4,controls/4,actor_from_token/1]).
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
@@ -51,6 +51,8 @@ create(Domain,Item,Attributes) ->
 delete(Item) ->
     gen_server:call(?MODULE,{delete,Item}).
 
+tag(Author,Resource,Tags) ->
+    gen_server:call(?MODULE,{tag,Author,Resource,Tags}).
 
 filter(Meta,Actor,Domain,Q) ->
     gen_server:call(?MODULE,{filter,Meta,Actor,Domain,Q}).
@@ -59,8 +61,8 @@ authorise(Credentials,Service,Command,Request) ->
     gen_server:call(?MODULE,{authorise,Credentials,Service,Command,Request}).
 
 %% ACL controls
-controls(Credentials,Service,Command,Request) ->
-    gen_server:call(?MODULE,{controls,Credentials,Service,Command,Request}).
+controls(Iuri,Service,Command,Request) ->
+    gen_server:call(?MODULE,{controls,Iuri,Service,Command,Request}).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
@@ -83,6 +85,7 @@ start_link() ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
+    io:format("~p starting~n",[?MODULE]),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -96,11 +99,11 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({authenticate,Id,Pswd}, _From, State) ->
     Reply = case apply(identity_adaptor(),authenticate,[Id,Pswd]) of
-	ok -> 
-		    ok;
+	{ok,Actor} -> 
+		    {ok,Actor};
 	Bad -> 
 	    % Identity module error/ not loaded?
-	    {error,error({"Identity module return error, could, be a missing module",Bad})}
+	    {error,error({"Identity module returned authentication error, or could, be a missing module. Reported error ",Bad})}
     end,
     {reply, Reply, State};
 
@@ -122,6 +125,10 @@ handle_call({delete,Item}, _From, State) ->
 		% Identity module error/ not loaded?
 		    {error,error({"Identity module return error, could, be a missing module",Bad})}
     end,
+    {reply, Reply, State}; 
+
+handle_call({tag,Author,Resource,Tags}, _From, State) ->
+    Reply = index_server:tag(Author,Resource,Tags),
     {reply, Reply, State};
 handle_call({filter,tagged,{uri,Author},_Domain,{Tags,Author}}, _From, State) ->
     Reply = summarise(index_server:tagged(Tags,get_index_id(Author))),
@@ -145,23 +152,35 @@ handle_call({filter,graph,Actor,Domain,{Uri,Attributes}}, _From, State) ->
     {reply, Reply, State};
 
 handle_call({authorise,Credentials,Service,Command,Request}, _From, State) ->
+%%     {Uri,Attribs} = Request,
+%%     Reply = case attribute_server:retrieve({uri,Uri}) of
+%% 		{ok,[]} -> 
+%% 		    {error,Uri,"Authorisation, could not identify location " ++ Uri};
+%% 		{ok,[It]} ->
+%% 		    case check_access(Credentials,Service,Command,{It#item.item,Attribs}) of
+%% 			{ok,Iuri}-> 
+%% 			    {ok,Iuri};
+%% 			{error,Iuri,Why} -> % Authosrisation failure
+%% 			    {error,error({"could not authorise. " ++ Iuri}),Why}
+%% 		    end
+%% 	    end,
     Reply = case check_access(Credentials,Service,Command,Request) of
-	{ok,Uri}-> 
-		    {ok,Uri};
-	{error,Iuri,Why} -> 
-	    % Authosrisation failure
-	    {error,error({"could not authorise. " ++ Iuri}),Why}
-    end,
+		{ok,Iuri}-> 
+		    {ok,Iuri};
+		{error,Iuri,Why} -> % Authosrisation failure
+		    {error,error({"could not authorise. " ++ Iuri}),Why}
+	    end,
     {reply, Reply, State};
 
-handle_call({controls,Credentials,_Service,grant,Request}, _From, State) ->
-    Reply = grant(Credentials,Request),
+%% Todo fix - not credentials its the actor one is granting privs to!!
+handle_call({controls,Iuri,_Service,grant,Request}, _From, State) ->
+    Reply = grant(Iuri,Request),
     {reply, Reply, State};
-handle_call({controls,Credentials,_Service,revoke,Request}, _From, State) ->
-    Reply = revoke(Credentials,Request),
+handle_call({controls,Iuri,_Service,revoke,Request}, _From, State) ->
+    Reply = revoke(Iuri,Request),
     {reply, Reply, State};
-handle_call({controls,Credentials,_Service,inherit,Request}, _From, State) ->
-    Reply = inherit(Credentials,Request),
+handle_call({controls,Iuri,_Service,inherit,Request}, _From, State) ->
+    Reply = inherit(Iuri,Request),
     {reply, Reply, State};
 
 
@@ -211,22 +230,22 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 
 %% This stuff needs to be much clearer visually (seperate files)
-check_access({annonymous},_Service,retrieve,_Request) -> % annonomous can only retrieve
-    {ok,"reactored.com/Users/annonymous"};
 check_access({annonymous},_Service,Command,_Request) ->
-    Reason = "Credentials not suitable, example authentication failure",
+    Reason = "Credentials (annonymous) not suitable, authentication failure",
     {error,"/Users/annonymous",atom_to_list(Command) ++ " failed dues to :"  ++ Reason};
 %% A participant can do all of this things with their own profile
 check_access({uri,Iuri},_Service,retrieve,{Iuri,_Attributes}) -> {ok,Iuri};
-check_access({uri,Iuri},_Service,update,{Iuri,_Attributes}) -> {ok,Iuri};
-check_access({uri,Iuri},_Service,create,{Iuri,_Attributes}) -> {ok,Iuri};
 check_access({uri,Iuri},_Service,q,{Iuri,_Attributes}) -> {ok,Iuri};
 
 check_access({uri,Iuri},_Service,Command,{Uri,Attributes}) -> 
     check_privileges(Iuri,Uri,Command,get_privileges(Iuri,{Uri,Attributes}));
-check_access({token,Token},_Service,Command,{Uri,Attributes}) -> 
-    Iuri = get_uri_from_token(Token),
-    check_privileges(Iuri,Uri,Command,get_privileges(Iuri,{Uri,Attributes}));
+check_access({token,Token},Service,Command,{Uri,Attributes}) -> 
+    case actor_from_token(Token) of
+	annonymous ->
+	    {error,"",error({"Badly formed Credentials for command ",atom_to_list(Command) ++ ",Token not recognised ",Service,Command,Uri,Attributes})};
+	Iuri ->
+	    check_privileges(Iuri,Uri,Command,get_privileges(Iuri,{Uri,Attributes}))
+    end;
 check_access({_,I},Service,Command,Request) ->
     {error,I,error({"Badly formed Credentials for command ",atom_to_list(Command) ++ ",Credentials not recognised ",Service,Command,Request})}.
 
@@ -244,9 +263,12 @@ screen(Actor,Lids) ->
     summarise(index_server:controls(Actor,retrieve,Lids)).
 
 screen(Actor,Domain, Attributes) ->
-    Results = attribute_server:q(Domain,Attributes),
-    Uris = index_server:controls(Actor,retrieve,[It#item.created || It <- Results]),
-    lists:filter(fun(I) -> lists:member(I#item.item,Uris) end,Results).
+    Results = case attribute_server:q(Domain,Attributes) of
+		  {ok,[]} -> [];
+		  {ok,Items} -> Items
+	      end,
+    Uris = index_server:controls(Actor,retrieve,[It#item.xref || It <- Results]),
+    lists:filter(fun(I) -> lists:member(I#item.xref,Uris) end,Results).
 
 screen(Actor,Domain, Uri, Attributes) ->
     Results = case attribute_server:graph(Domain, Uri, Attributes) of
@@ -259,13 +281,13 @@ screen(Actor,Domain, Uri, Attributes) ->
     Uris = index_server:controls(Actor,retrieve,[It#item.created || It <- Results]),
     lists:filter(fun(I) -> lists:member(I#item.item,Uris) end,Results).
 
-grant({uri,Iuri},{Uri,Attributes}) ->
+grant(Iuri,{Uri,Attributes}) ->
     index_server:grant(Iuri,Uri,get_acl(Attributes)).
 
-revoke({uri,Iuri},{Uri,Attributes}) ->
+revoke(Iuri,{Uri,Attributes}) ->
     index_server:revoke(Iuri,Uri,get_acl(Attributes)).
 
-inherit({uri,Iuri},{Uri,Attributes}) ->
+inherit(Iuri,{Uri,Attributes}) ->
     {_,Parent} = proplists:lookup("parent",Attributes),
     index_server:inherit(Iuri,Uri,Parent).
 
@@ -275,12 +297,21 @@ identity_adaptor() ->
 summarise(Locations) -> 
     summarise(Locations,[]).
 %TODO this needs to adapt to different incoming types, control records or {lid,tag} depending on if profile,tagged or search query. Maybe we dont need index anymore, just useattribute_server:retrieve_by_created(item.created) ?
-summarise([{Lid,Tag}|Locations],Summary) -> % Tagged Auth
-    [Item] = attribute_server:retrieve(Lid),
-    summarise(Locations,[{Tag,Item}|Summary]);
+summarise([{Tag,Lid}|Locations],Summary) -> % Tagged Auth
+    case attribute_server:retrieve(Lid) of
+	{ok,[]} -> % not located, should not happen
+	    summarise(Locations,Summary);
+	{ok,[Item]} ->
+	    summarise(Locations,[{Tag,Item}|Summary])
+    end;
+
 summarise([{_id,_iid,Lid,_types}|Locations],Summary) -> % Profile returns control records
-    [Item] = attribute_server:retrieve(Lid),
-    summarise(Locations,[{Item}|Summary]);
+    case attribute_server:retrieve(Lid) of
+	{ok,[]} -> % not located, should not happen
+	    summarise(Locations,Summary);
+	{ok,[Item]} ->
+	    summarise(Locations,[{Item}|Summary])
+    end;
 summarise([],Summary) ->
     Summary.
 %% redundant now    
@@ -306,9 +337,14 @@ get_acl(Attributes) ->
     end.
 
 %% Todo implement tokens
-get_uri_from_token(Token) ->
-    error("Tokens not yet implemented"),
-    [].
+actor_from_token(Token) ->
+    Ia = identity_adaptor(),
+    case Ia:identify(Token) of
+	{error,_Error} ->
+	    annonymous;
+	{ok,Uri} ->
+	    Uri
+    end.
 
 get_index_id(Uri) ->
     index_server:get_index_id(Uri).
@@ -319,3 +355,4 @@ qualified(Domain,Item) ->
 error(Error) ->
     error_logger:error_msg("Identity server - Says Whoops ~p~n",[Error]),
     Error.
+

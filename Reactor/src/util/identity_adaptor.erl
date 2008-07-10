@@ -21,24 +21,35 @@
 -include("schema.hrl").
 -include("system.hrl").
 -include_lib("stdlib/include/qlc.hrl").
--export([create/2,delete/1,authenticate/2,indexes/0,create_identities/0,reset_identities/0]).
+-export([create/2,delete/1,authenticate/2,identify/1,indexes/0,create_identities/0,reset_identities/0]).
 
-authenticate(Uri,Pswd) ->
+authenticate(Id,Pswd) ->
     F = fun() -> 
-		case qlc:e(qlc:q([X#identity.id || X <- mnesia:table(identity),
+		qlc:e(qlc:q([X#identity.uri || X <- mnesia:table(identity),
 						   X#identity.pswd =:= Pswd,
-						  X#identity.uri =:= Uri])) of
-		    [] -> 
-			{error};
-		    _ -> 
-			ok
-		end
+						  X#identity.email =:= Id]))
 	end,
     case mnesia:transaction(F) of
-	{atomic,ok} -> 
-	    ok;
-	_->
-	    {error,error("Cannot authenticate " ++ Uri)}
+	{atomic,[]} ->
+	    {error,error("Could not authenticate identity " ++ Id)};
+	{atomic,Uri} when is_list(hd(Uri)) ->
+	    {ok,hd(Uri)};
+	{atomic,Uri} ->
+	    {ok,Uri}
+    end.
+
+identify(Token) ->
+    F = fun() -> 
+		qlc:e(qlc:q([X#identity.uri || X <- mnesia:table(identity),
+						   X#identity.token =:= Token]))
+	end,
+    case mnesia:transaction(F) of
+	{atomic,[]} ->
+	    {error,error("Could not authenticate Token " ++ Token)};
+	{atomic,Uri} when is_list(hd(Uri)) ->
+	    {ok,hd(Uri)};
+	{atomic,Uri} ->
+	    {ok,Uri}
     end.
 
 create(Uri,Attributes) ->
@@ -46,7 +57,7 @@ create(Uri,Attributes) ->
     {_,Nick} = proplists:lookup("nick",Attributes),
     {_,Pswd} = proplists:lookup("password",Attributes),
     Uid = uid(),
-    F = fun() -> mnesia:write({identity,Uid,Uri,Email,Nick,Pswd}) end,
+    F = fun() -> mnesia:write({identity,Uid,Uri,Email,Nick,Pswd,attribute:today()}) end,
     case mnesia:transaction(F) of
 	{atomic,_} -> 
 	    {ok,Uid};

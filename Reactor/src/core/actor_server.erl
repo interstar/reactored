@@ -25,19 +25,23 @@
 %%% Created : 28 May 2008 by Alan Wood <awood@alan-woods-macbook.local>
 %%%-------------------------------------------------------------------
 -module(actor_server).
-
+-include("schema.hrl").
 -behaviour(gen_server).
 
 %% API
 -export([start_link/0]).
 -export([start/0,stop/0]).
+-export([domain/3,domain/5]).
 -export([new/5,remove/3]).
 -export([create/5,update/4,delete/3,delete/4,delete/5,retrieve/3,retrieve/4,retrieve/5,q/4,graph/5]).
--export([search/4,tagged/4,profile/4]).
--export([grant/4,revoke/4]).
+-export([search/4,tagged/4,profile/4,tag/5]).
+-export([grant/5,revoke/5]).
+%% Special functions reactor internal usage
+-export([create_id_fork/3]).
+-export([lookup/1]).
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+	 terminate/2, code_change/3]). 
 
 -record(state, {}).
 
@@ -53,7 +57,38 @@
 %% @type itemref() = {ok,string()}.
 %% @type error() = {error,string()}.
 %% @type item() = {item,uri,created,modified,domain,title,description,author,type,status,users,groups,revision,sync,xref}.
+%% @type Iacl() = {int(),[atom()])
 %%====================================================================
+
+%%====================================================================
+%% Domain API
+%%====================================================================
+
+%%--------------------------------------------------------------------
+%% Function: domain(Credentials,Service,Domain,Url) -> 
+%%                         {ok,Domains |
+%%                         {error, Error}
+%% Description: Creates a new participant and returns their xref
+%%
+%% @spec domain(Credentials::credentials(),Service::string(),
+%% 	 Url::string()) ->
+%%      {ok,domains::proplist()} | {error, Error::string()}
+%%--------------------------------------------------------------------
+domain(Credentials,Service,Url) ->
+    io:format("Domains ~p~n",[actor_server]),
+    gen_server:call(?MODULE,{domain,Credentials,Service,Url}).
+%%--------------------------------------------------------------------
+%% Function: domain(Credentials,Service,Domain,Url,Matcher) -> 
+%%                         {ok,Domains |
+%%                         {error, Error}
+%% Description: Creates a new participant and returns their xref
+%%
+%% @spec domain(Credentials::credentials(),Service::string(),Domain::string(),
+%% 	  Url::string(),Matcher::string()) ->
+%%      {ok,domains::proplist()} | {error, Error::string()}
+%%--------------------------------------------------------------------
+domain(Credentials,Service,Domain,Url,Matcher) ->
+    gen_server:call(?MODULE,{domain,Credentials,Service,Domain,Url,Matcher}).
 
 %%====================================================================
 %% Identity/Profile API
@@ -150,7 +185,7 @@ delete(Credentials,Service,Domain, Item, Attributes) ->
     gen_server:call(?MODULE,{Credentials,Service,delete,Domain, Item, Attributes}).
 %%--------------------------------------------------------------------
 %% Function: retrieve(Credentials,Service,Qitem) -> 
-%%                         [Attributes] |
+%%                         {ok,[Attributes]} |
 %%                         {error, Error}
 %% Description: retrieves an items and it's attributes
 %%
@@ -162,7 +197,7 @@ retrieve(Credentials,Service,Qitem) ->
     gen_server:call(?MODULE,{Credentials,Service,retrieve,Qitem}).
 %%--------------------------------------------------------------------
 %% Function: retrieve(Credentials,Service,Domain, Item) -> 
-%%                         [Attributes] |
+%%                         {ok,[Attributes]} |
 %%                         {error, Error}
 %% Description: retrieves an items and it's attributes
 %%
@@ -174,7 +209,7 @@ retrieve(Credentials,Service,Domain, Item) ->
      gen_server:call(?MODULE,{Credentials,Service,retrieve,Domain, Item}).
 %%--------------------------------------------------------------------
 %% Function: retrieve(Credentials,Service,Domain, Item, Attribute) -> 
-%%                         [Attribute] |
+%%                         {ok,{key,val}} |
 %%                         {error, Error}
 %% Description: retrieves an item's specific attributes
 %%
@@ -182,6 +217,9 @@ retrieve(Credentials,Service,Domain, Item) ->
 %% 	  Item::string(),Attributes::attributes()) ->
 %%      [Attributes::attribute()] | {error, Error}
 %%--------------------------------------------------------------------
+retrieve(Credentials,Service,Domain, Item, []) ->
+    retrieve(Credentials,Service,Domain, Item);
+%% Todo normalise - > This returns {ok{key,val}} val could a be a string or list of strings. We should make this always return a list of strings even if only 1
 retrieve(Credentials,Service,Domain, Item, Attribute) ->
     gen_server:call(?MODULE,{Credentials,Service,retrieve,Domain, Item, Attribute}).
 
@@ -212,7 +250,7 @@ search(Credentials,Service,Domain,Text) ->
 %%      [Item::item()] | {error, Error}
 %%--------------------------------------------------------------------
 tagged(Credentials,Service,Domain,Tags) ->
-    gen_server:call(?MODULE,{listing,Credentials,Service,tags,Domain,Tags}).
+    gen_server:call(?MODULE,{listing,Credentials,Service,tagged,Domain,Tags}).
 
 %does this connect up to q(identity,Iid) via Identity_server
 %%--------------------------------------------------------------------
@@ -253,13 +291,51 @@ graph(Credentials,Service,Domain, Uri, Attributes) ->
     gen_server:call(?MODULE,{listing,Credentials,Service,graph,Domain,{Uri,Attributes}}).
 
 %%====================================================================
-%% ACL Controls {uri,Iuri},{Uri,Attributes}
+%% Meta Data APIs {uri,Iuri},{Uri,Attributes} 
 %%====================================================================
 
-grant(Credentials,Service,Qitem,Attributes) ->
-    gen_server:call(?MODULE,{Credentials,Service,grant,Qitem, Attributes}).
-revoke(Credentials,Service,Qitem,Attributes) ->
-    gen_server:call(?MODULE,{Credentials,Service,revoke,Qitem, Attributes}).
+%%--------------------------------------------------------------------
+%% Function: tag(Credentials,Service,Destination,Resource,Tags) -> 
+%%                         TagRecs 
+%% Description: Tag a resources
+%%
+%% @spec tag(Credentials::credentials(),Service::string(),
+%%         Destination::string(),Resource::string(),Tags::string() ->
+%%      {ok,[Tags::string()]} | {error, Error::string()}
+%%--------------------------------------------------------------------
+tag(Credentials,Service,Destination,Resource,Tags) ->
+    gen_server:call(?MODULE,{tag,Credentials,Service,Destination,Resource,Tags}).
+
+%%====================================================================
+%% ACL Controls {uri,Iuri},{Uri,Attributes} 
+%%====================================================================
+
+%%--------------------------------------------------------------------
+%% Function: grant(Credentials,Service,Iuri,Qitem,Attributes) -> 
+%%                         {ok,Iacl} |
+%%                         {error, Error}
+%% Description: grant access privelages via ACL attributes
+%%
+%% @spec new(Credentials::credentials(),Service::string(),Iuri::string(),item::string(),
+%% 	  Attributes::attributes()) ->
+%%      {ok,Id::string()} | {error, Error::string()}
+%%--------------------------------------------------------------------
+grant(Credentials,Service,Iuri,Qitem,Attributes) ->
+    gen_server:call(?MODULE,{Credentials,Service,grant,Iuri,Qitem, Attributes}).
+%%--------------------------------------------------------------------
+%% Function: revoke(Credentials,Service,Iuri,Qitem,Attributes) -> 
+%%                         {ok,Iacl} |
+%%                         {error, Error}
+%% Description: revokes access privelages via ACL attributes
+%%
+%% @spec new(Credentials::credentials(),Service::string(),Iuri::string(),item::string(),
+%% 	  Attributes::attributes()) ->
+%%      {ok,Id::string()} | {error, Error::string()}
+%%--------------------------------------------------------------------
+revoke(Credentials,Service,Iuri,Qitem,Attributes) ->
+    gen_server:call(?MODULE,{Credentials,Service,revoke,Iuri,Qitem, Attributes}).
+lookup(Qitem) ->
+    gen_server:call(?MODULE,{lookup,Qitem}).
 
 %%====================================================================
 %% End Public Reactor API
@@ -289,6 +365,7 @@ start_link() ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
+    io:format("~p starting~n",[?MODULE]),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -300,25 +377,80 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+
+% Lookup function to retrieve Qitem from Uri
+handle_call({lookup,Uri}, _From, State) ->
+    Reply = case attribute_server:retrieve({uri,Uri}) of
+		{ok,[]} ->
+		    [];
+		{ok,[It]} ->
+		    It#item.item
+	    end,
+    {reply, Reply, State};
+
+%% Echo REST service calls for testing
+handle_call({Credentials,echo,Command,Domain,Item,Attributes}, _From, State) ->
+    Reply = "Echo service, REST call " ++ atom_to_list(Command) ++ "," ++ Domain ++ Item ++ echo_cred(Credentials) ++ attribute:params_to_string("|",Attributes) ++ "test",
+    {reply, Reply, State};
+handle_call({Credentials,echo,Command,Item,Attributes}, _From, State) ->
+    Reply = "Echo service, REST call " ++ atom_to_list(Command) ++ "," ++ Item  ++ echo_cred(Credentials) ++ attribute:params_to_string("|",Attributes),
+    {reply, Reply, State};
+handle_call({Credentials,echo,Command,Item}, _From, State) ->
+    Reply = "Echo service, REST call " ++ atom_to_list(Command) ++ "," ++ Item  ++ echo_cred(Credentials),
+    {reply, Reply, State};
+
+%% Domain calls
+handle_call({domain,Credentials,Service,Url}, _From, State) ->
+    Reply = case identity_server:authorise(Credentials,Service,retrieve,{Url,[]}) of 
+		{ok,Actor} -> 
+		    case domain_server:retrieve() of
+			{ok,Domains} ->
+			    pattern_server:process(Actor,Service,retrieve,[],Url,[]),
+			    {ok,domains_to_prop(Domains)};
+			{error,Error} -> 
+			    {error,error({"Could not list domains",Url,Error})}
+		    end;
+		{error,Actor,Why} ->
+		    pattern_server:process(Actor,Service,autherror,[],Url,[{"autherror",Why}]),
+		    {autherror,Why}
+		end,
+    {reply, Reply, State};
+
+handle_call({domain,Credentials,Service,Domain,Url,Matcher}, _From, State) ->
+    Reply = case identity_server:authorise(Credentials,Service,create,{Url,[]}) of 
+		{ok,Actor} -> 
+		    case domain_server:create(Domain,list_to_atom(Matcher),Actor) of
+			{ok,Domain} ->
+			    pattern_server:process(Actor,Service,create,Domain,Url,[]),
+			    {ok,[{Domain,list_to_atom(Matcher)}]};
+			{error,Error} -> 
+			    {error,error({"Could not create domain",Domain,Error})}
+		    end;
+		{error,Actor,Why} ->
+		    pattern_server:process(Actor,Service,autherror,Domain,Url,[{"autherror",Why}]),
+		    {autherror,Why}
+		end,
+    {reply, Reply, State};
+
 %% Identity/Profile calls
 
 handle_call({identity,Credentials,Service,create,Domain,Item,Attributes}, _From, State) ->
     %% Note special case of authority based on parent ACL having 'create' control
-    Parent = parent(Domain,Item),
+    Parent = attribute:parent(Domain,Item),
     Attribs = [{"parent",Parent}|Attributes],
     Reply = case identity_server:authorise(Credentials,Service,create,{Parent, Attributes}) of 
 		{ok,Actor} -> 
 		    case identity_server:create(Domain,Item,Attribs) of
 			{ok,Id} ->
-			    proplists:delete("email",Attribs),
 			    proplists:delete("password",Attribs),
 			    case attribute_server:create(Domain,Item,[{"identity",Id},{"type","identity"}] ++ Attribs) of
 				{ok,Xref} ->
 				    pattern_server:process(Actor,Service,create,Domain,Item,[{"xref",Xref}|Attribs]),
+				    create_id_fork(Domain,Item,Attribs),
 				    {ok,Xref};
 				_ -> {error,Actor,error({"Could not create resource",Domain,Item,Attribs})}
 			    end; 
-			_ -> {error,Actor,error({"Could not create identity",Domain,Item,Attribs})}
+			_ -> {error,error({"Could not create identity",Domain,Item,Attribs})}
 		    end;
 		{error,Actor,Why} ->
 		    pattern_server:process(Actor,Service,autherror,Domain,Item,[{"autherror",Why}|Attribs]),
@@ -335,11 +467,12 @@ handle_call({identity,Credentials,Service,delete,Item}, _From, State) ->
 				{ok,Xref} ->
 				    %% TODO system needs to remove traces of this participant ; links etc..
 				    pattern_server:process(Actor,Service,delete,domain(Item),Item,[{"xref",Xref}]),
+				    delete_id_fork(Item),
 				    {ok,Xref};
 				   _ -> 
-				    {error,Actor,error({"Could not delete resource",Item})}
+				    {error,error({"Could not delete resource",Item})}
 			    end; 
-			_ ->{error,Actor,error({"Could not delete identity",Item})}
+			_ ->{error,error({"Could not delete identity",Item})}
 		    end;
 		{error,Actor,Why} ->
 		    pattern_server:process(Actor,Service,autherror,[],Item,[{"autherror",Why}]),
@@ -351,7 +484,7 @@ handle_call({identity,Credentials,Service,delete,Item}, _From, State) ->
 %% Resource calls
 handle_call({Credentials,Service,create,Domain, Item, Attributes}, _From, State) ->
     %% Note special case of authority based on parent ACL having 'create' control
-    Parent = parent(Domain,Item),
+    Parent = attribute:parent(Domain,Item),
     Attribs = [{"parent",Parent}|Attributes],
     Reply = case identity_server:authorise(Credentials,Service,create,{Parent, Attributes}) of 
 		{ok,Actor} -> 
@@ -359,7 +492,7 @@ handle_call({Credentials,Service,create,Domain, Item, Attributes}, _From, State)
 			{ok,Xref} ->
 			    pattern_server:process(Actor,Service,create,Domain,Item,[{"xref",Xref}|Attribs]),
 			    {ok,Xref};
-		    _ -> {error,Actor,error({"Could not create resource",Domain,Item,Attribs})}
+		    _ -> {error,error({"Could not create resource",Domain,Item,Attribs})}
 		    end;
 		{error,Actor,Why} ->
 		    pattern_server:process(Actor,Service,autherror,Domain,Item,[{"autherror",Why}|Attribs]),
@@ -374,7 +507,7 @@ handle_call({Credentials,Service,update,Qitem, Attributes}, _From, State) ->
 			{ok,Xref} ->
 			    pattern_server:process(Actor,Service,update,domain(Qitem),Qitem,[{"xref",Xref}|Attributes]),
 			    {ok,Xref};
-			_ -> {error,Actor,error({"Could not update resource",Qitem,Attributes})}
+			_ -> {error,error({"Could not update resource",Qitem,Attributes})}
 		    end;
 		{error,Actor,Why} ->
 		    pattern_server:process(Actor,Service,autherror,domain(Qitem),Qitem,[{"autherror",Why}|Attributes]),
@@ -389,7 +522,7 @@ handle_call({Credentials,Service,delete,Qitem}, _From, State) ->
 			{ok,Xref} ->
 			    pattern_server:process(Actor,Service,delete,domain(Qitem),Qitem,[{"xref",Xref}]),
 			    {ok,Xref};
-			_ -> {error,Actor,error({"Could not delete resource",Qitem})}
+			_ -> {error,error({"Could not delete resource",Qitem})}
 		    end;
 		{error,Actor,Why} ->
 		    pattern_server:process(Actor,Service,autherror,domain(Qitem),Qitem,[{"autherror",Why}]),
@@ -405,7 +538,7 @@ handle_call({Credentials,Service,delete,Domain, Item}, _From, State) ->
 			{ok,Xref} ->
 			    pattern_server:process(Actor,Service,delete,Domain,Item,[{"xref",Xref}]),
 			    {ok,Xref};
-			_ -> {error,Actor,error({"Could not delete resource",Domain,Item})}
+			_ -> {error,error({"Could not delete resource",Domain,Item})}
 		    end;
 		{error,Actor,Why} ->
 		    pattern_server:process(Actor,Service,autherror,Domain,Item,[{"autherror",Why}]),
@@ -420,7 +553,7 @@ handle_call({Credentials,Service,delete,Domain, Item, Attributes}, _From, State)
 			{ok,Xref} ->
 			    pattern_server:process(Actor,Service,delete,Domain,Item,[{"xref",Xref}|Attributes]),
 			    {ok,Xref};
-			_ -> {error,Actor,error({"Could not delete attributes",Domain,Item,Attributes})}
+			_ -> {error,error({"Could not delete attributes",Domain,Item,Attributes})}
 		    end;
 		{error,Actor,Why} ->
 		    pattern_server:process(Actor,Service,autherror,Domain,Item,[{"autherror",Why}|Attributes]),
@@ -462,39 +595,60 @@ handle_call({Credentials,Service,retrieve,Domain, Item, Attributes}, _From, Stat
     {reply, Reply, State};
 
 handle_call({listing,{uri,Actor},Service,q,Domain,Attributes}, _From, State) ->
-    pattern_server:process(Actor,Service,q,Domain,Attributes),
-    Reply = identity_server:filter(q,Actor,Domain,Attributes),
+    Reply = listing_q(Actor,Service,Domain,Attributes),
+    {reply, Reply, State};
+handle_call({listing,{token,Token},Service,q,Domain,Attributes}, _From, State) ->
+    Actor = identity_server:actor_from_token(Token),
+    Reply = listing_q(Actor,Service,Domain,Attributes),
     {reply, Reply, State};
 
+
 handle_call({listing,{uri,Actor},Service,graph,Domain,{Uri,Attributes}}, _From, State) ->
-    pattern_server:process(Actor,Service,graph,Domain,Uri,Attributes),
-    Reply = identity_server:filter(graph,Actor,Domain,{Uri,Attributes}),
+    Reply = listing_graph(Actor,Service,Domain,Uri,Attributes),
     {reply, Reply, State};
+handle_call({listing,{token,Token},Service,graph,Domain,{Uri,Attributes}}, _From, State) ->
+    Actor = identity_server:actor_from_token(Token),
+    Reply = listing_graph(Actor,Service,Domain,Uri,Attributes),
+    {reply, Reply, State};
+
 
 %% listing calls
 handle_call({listing,{uri,Actor},Service,Meta,Qitem,Q}, _From, State) ->
-    Attrib = {atom_to_list(Meta),Q},
-    pattern_server:process(Actor,Service,Meta,[],Qitem,[Attrib]),
-    Reply = identity_server:filter(Meta,Actor,domain(Qitem),Q),
+    Reply = filter(Actor,Service,Meta,Qitem,Q),
+    {reply, Reply, State};
+handle_call({listing,{token,Token},Service,Meta,Qitem,Q}, _From, State) ->
+    Actor = identity_server:actor_from_token(Token),
+    Reply = filter(Actor,Service,Meta,Qitem,Q),
     {reply, Reply, State};
 
+handle_call({tag,Credentials,Service,Dest,Qitem,Tags}, _From, State) ->
+    io:format("About to Tag ~p~n",[{Dest,Qitem,Tags}]),
+    Reply = case identity_server:authorise(Credentials,Service,update,{Dest,[]}) of 
+		{ok,Actor} -> 
+		    pattern_server:process(Actor,Service,tag,[],Dest,[]),
+		    identity_server:tag(Actor,Qitem,Tags);
+		{error,Actor,Why} ->
+		    pattern_server:process(Actor,Service,autherror,[],Dest,[{"autherror",Why}]),
+		    {autherror,Why}
+		end,
+    {reply, Reply, State};
 %% ACL Controls
-handle_call({Credentials,Service,grant,Qitem, Attributes}, _From, State) ->
+handle_call({Credentials,Service,grant,Iuri,Qitem,Attributes}, _From, State) ->
     Reply = case identity_server:authorise(Credentials,Service,grant,{Qitem, Attributes}) of 
 		{ok,Actor} -> 
 		    pattern_server:process(Actor,Service,grant,[],Qitem,Attributes),
-		    identity_server:controls(Credentials,Service,grant,{Qitem, Attributes});
+		    identity_server:controls(Iuri,Service,grant,{Qitem, Attributes});
 		{error,Actor,Why} ->
 		    pattern_server:process(Actor,Service,autherror,[],Qitem,[{"autherror",Why},Attributes]),
 		    {autherror,Why}
 		end,
     {reply, Reply, State};
 
-handle_call({Credentials,Service,revoke,Qitem, Attributes}, _From, State) ->
+handle_call({Credentials,Service,revoke,Iuri,Qitem,Attributes}, _From, State) ->
     Reply = case identity_server:authorise(Credentials,Service,revoke,{Qitem, Attributes}) of 
 		{ok,Actor} -> 
 		    pattern_server:process(Actor,Service,revoke,[],Qitem,Attributes),
-		    identity_server:controls(Credentials,Service,revoke,{Qitem, Attributes});
+		    identity_server:controls(Iuri,Service,revoke,{Qitem, Attributes});
 		{error,Actor,Why} ->
 		    pattern_server:process(Actor,Service,autherror,[],Qitem,[{"autherror",Why},Attributes]),
 		    {autherror,Why}
@@ -548,20 +702,26 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+listing_q(Actor,Service,Domain,Attributes) ->
+    pattern_server:process(Actor,Service,q,Domain,Domain ++ "/",Attributes),
+    identity_server:filter(q,Actor,Domain,Attributes).
+
+listing_graph(Actor,Service,Domain,Uri,Attributes) ->
+    pattern_server:process(Actor,Service,graph,Domain,Uri,Attributes),
+    identity_server:filter(graph,Actor,Domain,{Uri,Attributes}).
+
+filter(Actor,Service,Meta,Qitem,Q) ->
+    Attrib = {atom_to_list(Meta),Q},
+    pattern_server:process(Actor,Service,Meta,[],Qitem,[Attrib]),
+    identity_server:filter(Meta,Actor,domain(Qitem),Q).
+
 domain(Qitem) ->
     attribute:domain_from_qitem(Qitem).
 
 qualified(Domain,Item) ->
     attribute:item_id(Domain,Item).
 
-parent(Domain,Item) ->
-    [_Node|Nodes] = lists:reverse(string:tokens(Item,"/")),
-    attribute:item_id(Domain,parent(Nodes,$/,[])).
 
-parent([],_Sep,Path) ->    
-    lists:flatten(Path);
-parent([Node|Nodes],Sep,Path) ->    
-    parent(Nodes,Sep,[[Sep|Node]|Path]).
 
 
 %% for full paths including protocol e.g. http://www.rel3.com/rel3/identities
@@ -574,3 +734,29 @@ qualified_parent([Node|Nodes],Sep,Path) ->
 error(Error) ->
     error_logger:error_msg("Actor server - Says Whoops ~p~n",[Error]),
     Error.
+
+echo_cred({annonymous})->
+    " Annonymously\n";
+echo_cred({uri,Uri}) ->
+    " logged in as " ++ Uri ++ "\n";
+echo_cred({token,Token}) ->
+    " Using Token " ++ Token ++ "\n".
+
+create_id_fork(Domain,Item,Attribs) ->
+    Title = case proplists:get_value("title",Attribs) of
+	      undefined -> "";
+	      T -> T
+	    end,
+    Atts = proplists:delete("title",Attribs),
+    attribute_server:create(Domain,Item ++ "/acl",[{"type","acl"},{"title",Title ++ " ACL"}] ++ Atts),
+    attribute_server:create(Domain,Item ++ "/tags",[{"type","tag"},{"title",Title ++ " Tags"}] ++ Atts),
+    attribute_server:create(Domain,Item ++ "/profile",[{"type","profile"},{"title",Title ++ " Profile"}] ++ Atts).
+
+delete_id_fork(Item) ->
+    attribute_server:delete(Item ++ "/acl"),
+    attribute_server:delete(Item ++ "/tags"),
+    attribute_server:delete(Item ++ "/profile").
+
+
+domains_to_prop(Domains) ->
+    lists:map(fun({D,M}) -> {D,atom_to_list(M)} end,Domains).
