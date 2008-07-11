@@ -449,8 +449,10 @@ react(Adaptor,retrieve,Resource,Request) ->
 	    case actor_server:lookup(qres(Resource,Request)) of
 		[] ->
 		    error(Adaptor,retrieve,Resource,Request,"Could not identify resource");
-		Qitem ->	    
-		    case attributes("GET",Request) of
+		Qitem ->
+		    %% Todo this is an untidy hack! the credentials call should remove token attribs, and return a tuple like {Credentials,Attributes}, this should be called at a higher level e.g allowing react(adaptor(Ext,accepts(Request)),retrieve,Resource,{Credentials,Attributes},Request);
+		    {_Token,Attributes} = get_option("token",attributes("GET",Request)),
+		    case Attributes of
 			[] -> 
 						% Retrieve entire item, all attributes
 			    case actor_server:retrieve(credentials(Request),?MODULE,Qitem) of
@@ -646,7 +648,14 @@ credentials(Request) ->
 	undefined -> 
 	    case Request:get_header_value("security-token") of
 		undefined ->
-		    {annonymous};
+		    Attributes = attributes(Request:get(method),Request),
+		    case proplists:get_value("token",Attributes) of
+			undefined ->
+			    {annonymous};
+			UrlToken ->
+			    io:format("Token ~s~n",[UrlToken]),
+			    {token,UrlToken}
+		    end;
 		Token ->
 		    {token,Token}
 	    end;
