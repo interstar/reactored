@@ -495,15 +495,38 @@ react(Adaptor,list,Resource,Request) ->
 react(Adaptor,create,Resource,Request) ->
     case lists:last(Resource) of
 	$/ ->
+	    Credentials = case credentials(Request) of
+			      {annonymous} ->
+				  forbidden(Resource,Request,"Not logged in");
+			      {token,Token} ->
+				  {uri,identity_server:actor_from_token(Token)};
+			      {uri,Actor} ->
+				  {uri,Actor}
+			  end,
 	    case actor_server:lookup(qres(Resource,Request)) of
 		[] -> error(Adaptor,create,Resource,Request,"Cannot create resource as child of unknown resource/domain");
 		Qitem ->
 		    [Domain,Res] = string:tokens(Qitem,?DOMAINSEPERATOR),
 		    Attributes = attributes("POST",Request),
 		    Item = Res ++ attribute:today() ++ "_" ++ title(Attributes),
-		    case actor_server:create(credentials(Request),?MODULE,Domain,Item,Attributes) of
+		    case actor_server:create(Credentials,?MODULE,Domain,Item,Attributes) of
 			{ok,_Xref} -> 
-			    react(Adaptor,retrieve,Resource,Request);
+			    case get_option("tags",Attributes) of
+				{undefined,_Attribs} ->
+				    react(Adaptor,retrieve,Resource,Request);
+				{Tags,Attribs} ->
+				    {uri,A} = Credentials,
+				    Dest = A ++ "/tags",
+				    case actor_server:tag(Credentials,?MODULE,Dest,Domain ++ ?DOMAINSEPERATOR ++ Item,string:tokens(Tags," ")) of
+					{ok,Iacl} ->
+					    actor_server:update(Credentials,?MODULE,Dest,[{Item,Tags}|Attribs]),
+					    react(Adaptor,retrieve,Resource,Request);
+					{error,Error} -> 
+					    error(Adaptor,update,"_/tag/" ++ Dest,Request,Error);
+					{autherror,Why} ->
+					    forbidden("_/tag/" ++ Dest,Request,Why)
+				    end
+			    end;
 			{error,Error} -> 
 			    error(Adaptor,create,Resource,Request,Error);
 			{autherror,Why} ->
