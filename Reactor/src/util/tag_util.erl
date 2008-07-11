@@ -35,10 +35,10 @@ delete(Sid) ->
     mnesia:transaction(F).
 
 retrieve(Tags) -> 
-    lists:flatten(lists:map(fun find_tagged/1,tags(Tags))).
+    lists:foldl(fun filter/2, [],lists:flatten(lists:map(fun find_tagged/1,tags(Tags)))).
 
 retrieve(Tags,Author) ->
-    lists:flatten(lists:map(fun(Tag)-> find_tagged(Tag,Author) end,tags(Tags))).
+    lists:foldl(fun filter/2, [],lists:flatten(lists:map(fun(Tag)-> find_tagged(Tag,Author) end,tags(Tags)))).
 
 save_tags(TagRecs) ->
     F = fun() -> lists:foreach(fun mnesia:write/1,TagRecs) end,
@@ -108,3 +108,18 @@ tagrec_to_tags(TagRecs) ->
 tagrec_to_tags([{tags,_Id,_author,Tag,_lid}|TagRecs],Tags) ->
     tagrec_to_tags(TagRecs,[Tag|Tags]);
 tagrec_to_tags([],Tags) -> lists:reverse(Tags).
+
+filter({T,L},Results) ->
+    case dupe(L,Results) of
+	true ->
+	    Results;
+	_ ->
+	    [{T,L}|Results]
+    end.
+
+dupe(L,[{_T,L}|_R]) ->
+    true;
+dupe(X,[{_T,_L}|R]) ->
+    dupe(X,R);
+dupe(_,[]) ->
+    false.
