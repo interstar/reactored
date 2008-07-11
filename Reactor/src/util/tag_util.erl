@@ -35,7 +35,17 @@ delete(Sid) ->
     mnesia:transaction(F).
 
 retrieve(Tags) -> 
-    lists:foldl(fun filter/2, [],lists:flatten(lists:map(fun find_tagged/1,tags(Tags)))).
+    T = hd(Tags),
+    %lists:foldl(fun filter/2, [],lists:flatten(lists:map(fun find_tagged/1,tags(string:tokens(T,"+")))));
+    case lists:member($ ,T) of
+	true -> % OR tags (any tag match)
+	    %lists:usort(lists:flatten(lists:map(fun find_tagged/1,tags(string:tokens(T,"+")))))
+	    lists:merge(lists:map(fun find_tagged/1,tags(string:tokens(T," "))));
+	_ -> % AND Tags (all tags match)
+	    sets:to_list(sets:intersection(lists:map(fun(Ti) ->
+						sets:from_list(find_tagged(Ti)) end,
+					tags(string:tokens(T,"+")))))
+    end.
 
 retrieve(Tags,Author) ->
     lists:foldl(fun filter/2, [],lists:flatten(lists:map(fun(Tag)-> find_tagged(Tag,Author) end,tags(Tags)))).
@@ -50,16 +60,16 @@ save_tags(TagRecs) ->
     end.
 
 find_tagged(Tag) ->
-    do(qlc:q([{X#tags.tag,X#tags.lid} || X <- mnesia:table(tags),
-						X#tags.tag =:= Tag])).
+    lists:sort(do(qlc:q([X#tags.lid || X <- mnesia:table(tags),
+						X#tags.tag =:= Tag]))).
 
 find_tagged([],Author) ->
-    do(qlc:q([{X#tags.tag,X#tags.lid} || X <- mnesia:table(tags),
-					 X#tags.author =:= Author]));
+    lists:sort(do(qlc:q([X#tags.lid || X <- mnesia:table(tags),
+					 X#tags.author =:= Author])));
 find_tagged(Tag,Author) ->
-    do(qlc:q([{X#tags.tag,X#tags.lid} || X <- mnesia:table(tags),
+    lists:sort(do(qlc:q([X#tags.lid || X <- mnesia:table(tags),
 					 X#tags.author =:= Author,
-					 X#tags.tag =:= Tag])).
+					 X#tags.tag =:= Tag]))).
 
 
 tags(Tags) ->

@@ -304,7 +304,7 @@ react(Adaptor,retrieve,"_/tags/" ++ Tagz,Request) ->
 	{autherror,Why} ->
 	    forbidden("_/tags/" ++ Tagz,Request,Why);
 	Items -> 
-	    respond(Request,Adaptor:render(Tagged,Url,lists:map(fun({T,I}) -> I end,Items)))
+	    respond(Request,Adaptor:render(Tagged,Url,Items))
     end;
 
 react(Adaptor,create,"_/search/" ++ S,Request) ->
@@ -650,7 +650,7 @@ title(Attributes) ->
     end.
 
 safeUri(Title) -> 
-	{_,S,_} = regexp:gsub(Title,"[^a-zA-Z0-9\-_\.]+","_"),
+	{_,S,_} = regexp:gsub(Title,"[^a-zA-Z0-9\-_]+","_"),
 	S.
 
 accepts(Req) ->

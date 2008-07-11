@@ -296,21 +296,20 @@ identity_adaptor() ->
 
 summarise(Locations) -> 
     summarise(Locations,[]).
-%TODO this needs to adapt to different incoming types, control records or {lid,tag} depending on if profile,tagged or search query. Maybe we dont need index anymore, just useattribute_server:retrieve_by_created(item.created) ?
-summarise([{Tag,Lid}|Locations],Summary) -> % Tagged Auth
-    case attribute_server:retrieve(Lid) of
-	{ok,[]} -> % not located, should not happen
-	    summarise(Locations,Summary);
-	{ok,[Item]} ->
-	    summarise(Locations,[{Tag,Item}|Summary])
-    end;
 
 summarise([{_id,_iid,Lid,_types}|Locations],Summary) -> % Profile returns control records
     case attribute_server:retrieve(Lid) of
 	{ok,[]} -> % not located, should not happen
 	    summarise(Locations,Summary);
 	{ok,[Item]} ->
-	    summarise(Locations,[{Item}|Summary])
+	    summarise(Locations,[Item|Summary])
+    end;
+summarise([Lid|Locations],Summary) -> % Tagged Auth
+    case attribute_server:retrieve(Lid) of
+	{ok,[]} -> % not located, should not happen
+	    summarise(Locations,Summary);
+	{ok,[Item]} ->
+	    summarise(Locations,[Item|Summary])
     end;
 summarise([],Summary) ->
     Summary.
