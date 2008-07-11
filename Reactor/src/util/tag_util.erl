@@ -36,10 +36,8 @@ delete(Sid) ->
 
 retrieve(Tags) -> 
     T = hd(Tags),
-    %lists:foldl(fun filter/2, [],lists:flatten(lists:map(fun find_tagged/1,tags(string:tokens(T,"+")))));
     case lists:member($ ,T) of
 	true -> % OR tags (any tag match)
-	    %lists:usort(lists:flatten(lists:map(fun find_tagged/1,tags(string:tokens(T,"+")))))
 	    lists:merge(lists:map(fun find_tagged/1,tags(string:tokens(T," "))));
 	_ -> % AND Tags (all tags match)
 	    sets:to_list(sets:intersection(lists:map(fun(Ti) ->
@@ -48,7 +46,15 @@ retrieve(Tags) ->
     end.
 
 retrieve(Tags,Author) ->
-    lists:foldl(fun filter/2, [],lists:flatten(lists:map(fun(Tag)-> find_tagged(Tag,Author) end,tags(Tags)))).
+    T = hd(Tags),
+    case lists:member($ ,T) of
+	true -> % OR tags (any tag match)
+	    lists:merge(lists:map(fun find_tagged/1,tags(string:tokens(T," "))));
+	_ -> % AND Tags (all tags match)
+	    sets:to_list(sets:intersection(lists:map(fun(Ti) ->
+						sets:from_list(find_tagged(Ti,Author)) end,
+					tags(string:tokens(T,"+")))))
+    end.
 
 save_tags(TagRecs) ->
     F = fun() -> lists:foreach(fun mnesia:write/1,TagRecs) end,
