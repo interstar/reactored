@@ -31,6 +31,7 @@
 -define(MAXCHARS,256).
 % This is for administrative web functions, which can differ from the main REST server, the example here uses a domain only accessable locally on the system which is more secure.
 -define(DOMAIN,"alan-woods-macbook.local:8080"). 
+-define(AUDITFILE,"./audit.log").
 -define(DOCROOT,"/Users/awood/www").
 -define(CONTEXT,"/reactor/").
 -define(SYSTEM,"_/queue/system").

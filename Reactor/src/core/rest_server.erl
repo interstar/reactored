@@ -587,7 +587,7 @@ respond(Request,{ContentType,Body}) ->
     Request:respond({200, [{"Content-Type", ContentType} | Headers], Body}).
 
 error(_Adaptor,_Operation,Resource,Request,Error) ->
-    Request:respond({500, [], ?CONTEXT ++  Resource ++ "\n" ++ Error}).
+    Request:respond({500, [], ?CONTEXT ++  Resource ++ "\n" ++ Error ++ "\n"}).
 
 %% Redirect for any type (in this case only retrieves/'GET'
 redirect(retrieve,"http://" ++ Resource,Request,Headers) ->

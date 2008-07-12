@@ -25,7 +25,7 @@
 %%% Created : 29 May 2008 by Alan Wood <awood@alan-woods-macbook.local>
 %%%-------------------------------------------------------------------
 -module(audit_server).
--define(AUDITFILE,"./audit.log").
+-include("system.hrl").
 -behaviour(gen_server).
 
 %% API
