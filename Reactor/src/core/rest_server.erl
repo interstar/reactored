@@ -439,6 +439,8 @@ react(Adaptor,update,"_/acl/" ++ Id,Request) ->
 %% Todo - graph(Credentials,Service,Domain, Uri, Attributes)
 
 react(Adaptor,retrieve,Resource,Request) ->
+    %% Todo this is an untidy hack! the credentials call should remove token attribs, and return a tuple like {Credentials,Attributes}, this should be called at a higher level e.g allowing react(adaptor(Ext,accepts(Request)),retrieve,Resource,{Credentials,Attributes},Request);
+    {_Token,Attributes} = get_option("token",attributes("GET",Request)),
     %io:format("Retrieving resource ~s~n",[Resource]),
     case lists:last(Resource) of
 	$/ -> react(Adaptor,list,Resource,Request);
@@ -450,8 +452,6 @@ react(Adaptor,retrieve,Resource,Request) ->
 		[] ->
 		    error(Adaptor,retrieve,Resource,Request,"Could not identify resource " ++ Resource);
 		Qitem ->
-		    %% Todo this is an untidy hack! the credentials call should remove token attribs, and return a tuple like {Credentials,Attributes}, this should be called at a higher level e.g allowing react(adaptor(Ext,accepts(Request)),retrieve,Resource,{Credentials,Attributes},Request);
-		    {_Token,Attributes} = get_option("token",attributes("GET",Request)),
 		    case Attributes of
 			[] -> 
 						% Retrieve entire item, all attributes
@@ -504,7 +504,7 @@ react(Adaptor,create,Resource,Request) ->
 				  {uri,Actor}
 			  end,
 	    case actor_server:lookup(qres(Resource,Request)) of
-		[] -> error(Adaptor,create,Resource,Request,"Cannot create resource as child of unknown resource/domain");
+		[] -> error(Adaptor,create,Resource,Request,"Cannot create resource as child of unknown resource/domain " ++ Resource);
 		Qitem ->
 		    [Domain,Res] = string:tokens(Qitem,?DOMAINSEPERATOR),
 		    Attributes = attributes("POST",Request),
