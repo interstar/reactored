@@ -448,7 +448,7 @@ react(Adaptor,retrieve,Resource,Request) ->
 	    Title = "Resource " ++ Resource,
 	    case actor_server:lookup(qres(Resource,Request)) of
 		[] ->
-		    error(Adaptor,retrieve,Resource,Request,"Could not identify resource");
+		    error(Adaptor,retrieve,Resource,Request,"Could not identify resource " ++ Resource);
 		Qitem ->
 		    %% Todo this is an untidy hack! the credentials call should remove token attribs, and return a tuple like {Credentials,Attributes}, this should be called at a higher level e.g allowing react(adaptor(Ext,accepts(Request)),retrieve,Resource,{Credentials,Attributes},Request);
 		    {_Token,Attributes} = get_option("token",attributes("GET",Request)),

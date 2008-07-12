@@ -64,12 +64,16 @@ entry(It) when is_record(It,item) ->
 		      {content,[{type,"text/plain"}],[It#item.description]}
 	      end,
 %    io:format("Content ~p~n",[Content]), 
+    % or Res = It#item.uri -- (It#item.domain ++ ?DOMAINSEPERATOR)
+    [_Domain,Res] = string:tokens(It#item.item,?DOMAINSEPERATOR),
     {entry,
      [
       {title,[It#item.title]},
-      {link,[{href,h(It#item.uri)}],[]},
+      {link,[{href,h(It#item.uri)},{rel,"self"}],[]},
+      {link,[{href,h(Res)},{rel,"alternate"}],[]},
       {id,[It#item.item]},
       {author,[{uri,[h(It#item.author)]}]},
+      {published,[item:created(It)]},
       {updated,[item:modified(It)]},
       {summary,[s(markup_stripper:parse(It#item.description))]},
       Content

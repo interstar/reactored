@@ -35,6 +35,7 @@
 -export([init/1]).
 
 -define(SERVER, ?MODULE).
+-define(PORT, 8080).
 
 %%====================================================================
 %% API functions
@@ -70,9 +71,20 @@ start_link(Args) ->
 %% specifications.
 %%--------------------------------------------------------------------
 init([]) ->
-     Ip = case os:getenv("REACTORED_IP") of false -> "0.0.0.0"; Any -> Any end,   
+    Ip = case os:getenv("REACTORED_IP") of false -> "0.0.0.0"; Any -> Any end,
+    Port = case os:getenv("REACTORED_PORT") of 
+	       false -> 
+		   ?PORT; 
+	       RP -> 
+		   case string:to_integer(RP) of
+		       {error,_} ->
+			   ?PORT;
+		       {P,_} ->
+			   P
+		   end
+	   end,
     WebConfig = [{ip, Ip},
-                 {port, 8000},
+                 {port, Port},
                  {docroot, ?DOCROOT}],
 
     Storage = {storage,{attribute_server,start_link,[]},
