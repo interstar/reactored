@@ -309,10 +309,23 @@ summarise([Lid|Locations],Summary) -> % Tagged Auth
 	{ok,[]} -> % not located, should not happen
 	    summarise(Locations,Summary);
 	{ok,[Item]} ->
-	    summarise(Locations,[Item|Summary])
+	    summarise(Locations,[Item|Summary]);
+	{ok,Items} -> % Todo shouldn't happen but unporcessed xref can be duped by it's sink entries! This is a hack, need to fix the fact that xrefs arn't unique!!
+	    summarise(Locations,[original_item(Items)|Summary])
+	    
     end;
 summarise([],Summary) ->
     Summary.
+
+original_item([Item|Items]) ->
+    case string:str(Item#item.item, "/sink/") of
+	0 ->
+	    Item;
+	_ ->
+	    original_item(Items)
+    end;
+original_item([]) -> [].    
+
 %% redundant now    
 %% summarise([Location|Locations],Summary) ->
 %%     L = attribute_server:retrieve(Location, basic)
