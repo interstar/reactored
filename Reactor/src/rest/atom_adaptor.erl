@@ -40,7 +40,7 @@ xml(Feed) ->
     xmerl_ucs:to_utf8(xmerl:export_simple(lists:flatten([Feed]), xmerl_xml)).
 
 feed(Title,Url,Items) ->
-    {feed,[{xmlns,"http://www.w3.org/2005/Atom"}],
+    {feed,[{'xmlns:atom',"http://www.w3.org/2005/Atom"}],
 	    entries(Items,[{title,[Title]},{link,[h(Url)]},{id,[Url]}]) }.
 
 
