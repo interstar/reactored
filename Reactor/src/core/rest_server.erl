@@ -781,6 +781,23 @@ attributes("POST",Request) ->
 attributes(_,Request) ->
     Request:parse_qs().
 
+%% not effective need to consider alternatives
+safe_char_set(Attribs) ->
+    case proplists:get_value("type",Attribs) of
+	undefined ->
+	    Attribs;
+	"application/xml" ->
+	    case get_option("description",Attribs) of
+		{undefined,Attrbs} ->
+		    Attrbs;
+		{Text,Attrbs} ->
+		    [{"description",xmerl_ucs:to_utf8(Text)}|Attrbs]
+	    end
+    end.
+
+	
+
+
 show_login_form(Request) ->
     Headers = [],
     Request:respond({200, [{"Content-Type", "text/html"} | Headers], html(?LOGIN)}).

@@ -37,7 +37,7 @@ pretty_print(Feed) ->
     io:format("~s~n",[lists:flatten(Feed)]).
 
 xml(Feed) ->
-    xmerl:export_simple(lists:flatten([Feed]), xmerl_xml).
+    xmerl_ucs:to_utf8(xmerl:export_simple(lists:flatten([Feed]), xmerl_xml)).
 
 feed(Title,Url,Items) ->
     {feed,[{xmlns,"http://www.w3.org/2005/Atom"}],
@@ -70,7 +70,7 @@ entry(It) when is_record(It,item) ->
      [
       {title,[It#item.title]},
       {link,[{href,h(It#item.uri)},{rel,"self"}],[]},
-      {link,[{href,h(Res)},{rel,"alternate"}],[]},
+      {link,[{href,Res},{rel,"alternate"}],[]},
       {id,[It#item.item]},
       {author,[{uri,[h(It#item.author)]}]},
       {published,[item:created(It)]},
