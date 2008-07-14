@@ -302,7 +302,9 @@ summarise([{_id,_iid,Lid,_types}|Locations],Summary) -> % Profile returns contro
 	{ok,[]} -> % not located, should not happen
 	    summarise(Locations,Summary);
 	{ok,[Item]} ->
-	    summarise(Locations,[Item|Summary])
+	    summarise(Locations,[Item|Summary]);
+	{ok,Items} -> % Todo shouldn't happen but unporcessed xref can be duped by it's sink entries! This is a hack, need to fix the fact that xrefs arn't unique!!
+	    summarise(Locations,[original_item(Items)|Summary])
     end;
 summarise([Lid|Locations],Summary) -> % Tagged Auth
     case attribute_server:retrieve(Lid) of

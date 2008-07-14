@@ -1,7 +1,7 @@
 -module(config).
 -include("schema.hrl").
 -include("system.hrl").
--export([start/0,stop/0,debug/1,create_live/1]).
+-export([start/0,stop/0,debug/1,create_live/1,start/1]).
 
 % Do this only once!
 create_live(Config) ->
@@ -55,30 +55,48 @@ create_live_storage()->
     mnesia:create_schema([node()]),
     mnesia:start(),
     mnesia:create_table(domain,[{attributes, record_info(fields,domain)},
-				{record_name,domain},
-				{disc_copies,[node()]}]),
+				{record_name,domain},{disc_copies,[node()]}]),
     mnesia:create_table(item,[{attributes, record_info(fields,item)},
-			      {record_name,item},
-			      {disc_copies,[node()]}]),
+			      {record_name,item},{disc_copies,[node()]}]),
     mnesia:create_table(attribute,[{attributes,record_info(fields,attribute)},
-				   {record_name,attribute},
-				   {disc_copies,[node()]}]),
+				   {record_name,attribute},{disc_copies,[node()]}]),
     mnesia:create_table(identity,[{attributes, record_info(fields,identity)},
-				  {record_name,identity},
-				  {disc_copies,[node()]}]),
+				  {record_name,identity},{disc_copies,[node()]}]),
     mnesia:create_table(tags,[{attributes, record_info(fields,tags)},
-			      {record_name,tags},
-			      {disc_copies,[node()]}]),
+			      {record_name,tags},{disc_copies,[node()]}]),
     mnesia:create_table(words,[{attributes, record_info(fields,words)},
-			       {record_name,words},
-			       {disc_copies,[node()]}]),
+			       {record_name,words},{disc_copies,[node()]}]),
     mnesia:create_table(control,[{attributes, record_info(fields,control)},
-				 {record_name,control},
-				 {disc_copies,[node()]}]),
+				 {record_name,control},{disc_copies,[node()]}]),
     mnesia:create_table(usession,[{attributes, record_info(fields,usession)},
-				 {record_name,usession},
-				 {disc_copies,[node()]}]),
+				 {record_name,usession},{disc_copies,[node()]}]),
     mnesia:stop().
+
+start(Config)->
+    mnesia:create_schema([node()]),
+    mnesia:start(),
+    mnesia:create_table(domain,[{attributes, record_info(fields,domain)},
+				{record_name,domain}]),
+    mnesia:create_table(item,[{attributes, record_info(fields,item)},
+			      {record_name,item}]),
+    mnesia:create_table(attribute,[{attributes,record_info(fields,attribute)},
+				   {record_name,attribute}]),
+    mnesia:create_table(identity,[{attributes, record_info(fields,identity)},
+				  {record_name,identity}]),
+    mnesia:create_table(tags,[{attributes, record_info(fields,tags)},
+			      {record_name,tags}]),
+    mnesia:create_table(words,[{attributes, record_info(fields,words)},
+			       {record_name,words}]),
+    mnesia:create_table(control,[{attributes, record_info(fields,control)},
+				 {record_name,control}]),
+    mnesia:create_table(usession,[{attributes, record_info(fields,usession)},
+				 {record_name,usession}]),
+    load_reactor(),
+    load_domain(Config).
+
+%%  mnesia:create_table(usession,[{attributes, record_info(fields,usession)},
+%% 				 {record_name,usession},
+%% 				 {disc_copies,[node()]}]),
 
 %% do this only once!!!
 initialise_live_storage(Config) ->

@@ -79,7 +79,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({match,Actor,Service,Command,Domain,Resource,Params}, _From, State) ->
     %% Split to all, writes and read call matching actions
-    io:format("Default Matched ~p~n",[{Actor,Service,Command,Domain,Resource,Params}]),
+    io:format("Default Matched ~s~n",[Resource]),
     Reply = process(Actor,Service,Command,Domain,Resource,Params),
     {reply, Reply, State};
 handle_call(stop, _From, State) ->

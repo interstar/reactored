@@ -42,10 +42,12 @@ write(Actor,Service,Command,Domain,Resource,Params) ->
 
 audit(Actor,Service,Command,Domain,Resource,Params) ->
     Data = [{"title",Resource},
-	    {"description", string:join([Domain,atom_to_list(Service),atom_to_list(Command),Resource,attribute:params_to_string(",",Params)],",") },
+	    {"description", string:join([Domain,atom_to_list(Service),atom_to_list(Command),Resource],",") },
 	    {"author",Actor},
 	    {"type","audit"}],
    {audit,Data}.
+% Removed attribute:params_to_string(",",Params) from description to many dupes
+
 
 index(Actor,_Service,Command,Domain,Resource,Params) ->
     Qitem = case Domain of

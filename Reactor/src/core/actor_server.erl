@@ -622,7 +622,7 @@ handle_call({listing,{token,Token},Service,Meta,Qitem,Q}, _From, State) ->
     {reply, Reply, State};
 
 handle_call({tag,Credentials,Service,Dest,Qitem,Tags}, _From, State) ->
-    io:format("About to Tag ~p~n",[{Dest,Qitem,Tags}]),
+    %io:format("About to Tag ~p~n",[{Dest,Qitem,Tags}]),
     Reply = case identity_server:authorise(Credentials,Service,update,{Dest,[]}) of 
 		{ok,Actor} -> 
 		    pattern_server:process(Actor,Service,tag,[],Dest,[]),
