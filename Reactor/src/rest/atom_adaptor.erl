@@ -95,6 +95,13 @@ entry(It)  ->
     Uri = pv("uri",It),
     Title = pv("title",It),
     Description = pv("description",It),
+    Content = case pv("type",It) of
+		  "application/xml" ->
+		      {C,_} = xmerl_scan:string(Description),
+		      {content,[{type,"application/xml"}],[xmerl_lib:simplify_element(C)]};
+		  Type -> 
+		      {content,[{type,"text/xml"}],xtrib(It)}
+	      end,
     {entry,
      [
       {title,[Title]},
@@ -103,7 +110,7 @@ entry(It)  ->
       {author,[{uri,[h(Author)]}]},
       {updated,[item:format_timestamp(Updated)]},
       {summary,[markup_stripper:parse(Description)]},
-      {content,[{type,"text/xml"}],xtrib(It)}
+      Content
       ]}.
 
 xtrib(Attribs) ->
