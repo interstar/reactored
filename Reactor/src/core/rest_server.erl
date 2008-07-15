@@ -440,6 +440,7 @@ react(Adaptor,update,"_/acl/" ++ Id,Request) ->
 
 react(Adaptor,retrieve,Resource,Request) ->
     %% Todo this is an untidy hack! the credentials call should remove token attribs, and return a tuple like {Credentials,Attributes}, this should be called at a higher level e.g allowing react(adaptor(Ext,accepts(Request)),retrieve,Resource,{Credentials,Attributes},Request);
+    Credentials = credentials(Request),
     {_Token,Attributes} = get_option("token",attributes("GET",Request)),
     %io:format("Retrieving resource ~s~n",[Resource]),
     case lists:last(Resource) of
@@ -455,7 +456,7 @@ react(Adaptor,retrieve,Resource,Request) ->
 		    case Attributes of
 			[] -> 
 						% Retrieve entire item, all attributes
-			    case actor_server:retrieve(credentials(Request),?MODULE,Qitem) of
+			    case actor_server:retrieve(Credentials,?MODULE,Qitem) of
 				{error,Error} -> 
 				    error(Adaptor,retrieve,Resource,Request,Error);
 				{autherror,Why} ->
@@ -466,7 +467,7 @@ react(Adaptor,retrieve,Resource,Request) ->
 			    end;
 			Attrib -> 
 						% partial retrieve specified attributes only
-			    case actor_server:retrieve(credentials(Request),?MODULE,Domain,Resource,Attrib) of
+			    case actor_server:retrieve(Credentials,?MODULE,Domain,Resource,Attrib) of
 				{error,Error} -> 
 				    error(Adaptor,retrieve,Resource,Request,Error);
 				{autherror,Why} ->
@@ -480,9 +481,11 @@ react(Adaptor,retrieve,Resource,Request) ->
 
 react(Adaptor,list,Resource,Request) ->
     %% Todo Can we add in graph queries here as well a domain queries, and distinguish between them? Basic requirement is ability to differentiate between domain and non domian queries via a is_domain(Resource).
+    Credentials = credentials(Request),
+    {_Token,Attributes} = get_option("token",attributes("GET",Request)),
     [_|Niamod] = lists:reverse(qres(Resource,Request)),
     Domain = lists:reverse(Niamod),
-    case actor_server:q(credentials(Request),?MODULE,Domain, attributes("GET",Request)) of
+    case actor_server:q(Credentials,?MODULE,Domain, attributes("GET",Request)) of
 	{error,Error} -> 
 	    error(Adaptor,list,Resource,Request,Error);
 	{autherror,Why} ->
