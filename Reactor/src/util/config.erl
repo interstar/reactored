@@ -114,12 +114,12 @@ load_domain(Config) ->
     case file:consult(Config) of
 	{ok,Configs} ->
 	    Conf = hd(Configs),
-	    setup_domain(Conf#config.domain,Conf#config.email,Conf#config.password,Conf#config.branches);
+	    setup_domain(Conf#config.domain,Conf#config.email,Conf#config.password,Conf#config.token,Conf#config.branches);
 	{error,Why} ->
 	    error("Could not parse config file " ++  Config)
     end.
 
-setup_domain(Domain,Email,Password,Branches) ->
+setup_domain(Domain,Email,Password,Token,Branches) ->
     System_Queue = ?DOMAIN ++ ?CONTEXT ++ ?SYSTEM,
     Domain_Queue = ?DOMAIN ++ ?CONTEXT ++ ?QUEUE,
     Domain_Admin = ?DOMAIN ++ ?CONTEXT ++ ?DOMAINS,
@@ -161,7 +161,8 @@ setup_domain(Domain,Email,Password,Branches) ->
     identity_server:create(Identities,"/founder",
 			   [{"email",Email},
 			    {"nick","Founder"},
-			    {"password",Password}]),
+			    {"password",Password},
+			   {"token",Token}]),
     attribute_server:create(Identities,"/founder",
 			    [{"description","Founder's details"},
 			     {"title","Founder's Profile"},

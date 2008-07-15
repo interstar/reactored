@@ -56,8 +56,14 @@ create(Uri,Attributes) ->
     {_,Email} = proplists:lookup("email",Attributes),
     {_,Nick} = proplists:lookup("nick",Attributes),
     {_,Pswd} = proplists:lookup("password",Attributes),
+    Token = case proplists:getvalue("token",Attributes) of
+		undefined ->
+		    attribute:today();
+	       T ->
+		    T
+	    end,
     Uid = uid(),
-    F = fun() -> mnesia:write({identity,Uid,Uri,Email,Nick,Pswd,attribute:today()}) end,
+    F = fun() -> mnesia:write({identity,Uid,Uri,Email,Nick,Pswd,Token}) end,
     case mnesia:transaction(F) of
 	{atomic,_} -> 
 	    {ok,Uid};
