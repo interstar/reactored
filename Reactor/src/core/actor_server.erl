@@ -488,7 +488,7 @@ handle_call({Credentials,Service,create,Domain, Item, Attributes}, _From, State)
     Attribs = [{"parent",Parent}|Attributes],
     Reply = case identity_server:authorise(Credentials,Service,create,{Parent, Attributes}) of 
 		{ok,Actor} -> 
-		    case attribute_server:create(Domain,Item,Attribs) of
+		    case attribute_server:create(Domain,Item,[{"author",Actor}|Attribs]) of
 			{ok,Xref} ->
 			    pattern_server:process(Actor,Service,create,Domain,Item,[{"xref",Xref}|Attribs]),
 			    {ok,Xref};

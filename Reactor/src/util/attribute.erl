@@ -440,6 +440,7 @@ is_ancestor(Uri,Iuri) -> % TODO need to check outside cases, are their exception
 	    true
     end.
 
+% Todo remove now redundant
 ensure_item(Domain,Item,Now) ->   
     case mnesia:read({item,item_id(Domain,Item)}) of
 	[] ->  mnesia:write(#item{item=item_id(Domain,Item),
@@ -459,6 +460,43 @@ ensure_item(Domain,Item,Now) ->
 	[_] -> []
     end.
 
+write_item(Domain,Item,Now,Attribs) ->
+    It = #item{item=item_id(Domain,Item),
+				 uri=Domain ++ Item,
+				 created=Now,
+				 modified=Now,
+				 domain=Domain,title=["New"],
+				 description=["Created"],
+				 author=[Domain ++ ?IDENTITIES ++ "/founder"],
+				 type=["plain/text"],
+				 status=["live"],
+				 users=[Domain ++ ?IDENTITIES ++ "/founder"],
+				 groups=["/founders"],
+				 revision=0,
+				 sync=cache,
+				xref=Now},
+    item_type(Attribs,It,item,[]).
+
+item_type([{K,V,_Replace}|Attribs],It,Type,Atts) ->
+    item_type(Attribs,It,Type,[{K,V,_Replace}|Atts]);
+item_type([{"created",V}|Attribs],It,Type,Atts) ->
+    item_type(Attribs,It#item{created=to_i(V)},Type,Atts);
+item_type([{"title",V}|Attribs],It,Type,Atts) ->
+    item_type(Attribs,It#item{title=V},Type,Atts);
+item_type([{"description",V}|Attribs],It,Type,Atts) ->
+    item_type(Attribs,It#item{description=V},Type,Atts);
+item_type([{"author",V}|Attribs],It,Type,Atts) ->
+    item_type(Attribs,It#item{author=V},Type,Atts);
+item_type([{"type",V}|Attribs],It,Type,Atts) ->
+    item_type(Attribs,It#item{type=V},Type,Atts);
+item_type([{"status",V}|Attribs],It,Type,Atts) ->
+    item_type(Attribs,It#item{status=V},Type,Atts);
+item_type([{K,V}|Attribs],It,Type,Atts) -> 
+    item_type(Attribs,It,attribute,[{K,V}|Atts]);
+item_type([],It,Type,Atts) ->
+    {It,Type,Atts}.
+					    
+
 %% String representation of today
 today() -> 
     {Meg,Sec,Mic} = now(),
@@ -470,13 +508,25 @@ ts() ->
     Meg * 1000000000000 + Sec * 1000000 + Mic.
 
 store_attributes(Domain,Item,Attributes) ->
-    Timestampid = ts(),
-    Data = put_attributes(Attributes),
+    Now = ts(),
+    {It,Type,Atts} = write_item(Domain,Item,Now,Attributes),
+    As = put_attributes(Atts),
     %io:fwrite("Attribs ~p~n",[Data]),
     F = fun() ->
-	ensure_item(Domain,Item,Timestampid),
-	lists:foreach(fun(At) -> store_attribute(Domain,Item,At) end,Data),
-	Timestampid
+	%ensure_item(Domain,Item,Timestampid),
+		case mnesia:read({item,item_id(Domain,Item)}) of
+		    [] ->  
+			mnesia:write(It);
+		    [_] -> 
+			void
+		end,
+		case Atts of 
+		    [] -> 
+			void; 
+		    A ->
+			lists:foreach(fun(At) -> store_attribute(Domain,Item,At) end,As)
+		end,
+		Now
     end,
     mnesia:transaction(F).
 
@@ -748,6 +798,7 @@ s(V) when is_list(V) ->
 s(V) ->
     io_lib:format("~p",[V]).
 
+to_i(S) when is_integer(S) -> S;
 to_i(S) ->
     case string:to_integer(S) of 
 	{error,_} ->
