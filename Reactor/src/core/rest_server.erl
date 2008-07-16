@@ -148,7 +148,7 @@ react_to(Method,Resource,Request) ->
     
 % List actor's tags only
 react(actor,Adaptor,retrieve,"~/tag/",Request) ->
-    Attributes = attributes("GET",Request), 
+    Attributes = attributes('GET',Request), 
     case credentials(Request) of
 	{uri,Actor} ->
 	    tag(Adaptor,Actor,Request,Attributes);    
@@ -158,7 +158,7 @@ react(actor,Adaptor,retrieve,"~/tag/",Request) ->
 
 % Tag resource (or external url) using 'GET', copy to CC
 react(actor,Adaptor,retrieve,"~/tag/" ++ CC,Request) ->
-    Attributes = attributes("GET",Request), 
+    Attributes = attributes('GET',Request), 
     case credentials(Request) of
 	{uri,Actor} ->
 	    case actor_server:update({uri,Actor},?MODULE,CC,Attributes) of
@@ -207,7 +207,7 @@ react(Adaptor,retrieve,"_/",Request) ->
     end;
 
 react(Adaptor,create,"_/",Request) ->
-    Attribs = attributes("POST",Request),
+    Attribs = attributes('POST',Request),
     Matcher = case proplists:get_value("matcher", Attribs) of
 		undefined -> 
 		    ?ERRORMATCHER;
@@ -239,14 +239,14 @@ react(_Adaptor,Operation,"_/echo/" ++ Resource,Request) ->
 		       case lists:last(Resource) of
 			   $/ -> 
 			       Domain = domain(Request),
-			       Attributes = attributes("POST",Request),
+			       Attributes = attributes('POST',Request),
 			       Item = Resource ++ attribute:today() ++ "_" ++ title(Attributes),
 			       actor_server:create(credentials(Request),echo,Domain,Item,Attributes);
 			   _ -> 
-			       actor_server:update(credentials(Request),echo,qres(Resource,Request), attributes("POST",Request))
+			       actor_server:update(credentials(Request),echo,qres(Resource,Request), attributes('POST',Request))
 		       end;
 		   update -> 
-		       actor_server:update(credentials(Request),echo,qres(Resource,Request), attributes("POST",Request));
+		       actor_server:update(credentials(Request),echo,qres(Resource,Request), attributes('POST',Request));
 		   delete -> 
 		       case attributes("DELETE",Request) of
 			   [] -> actor_server:delete(credentials(Request),echo,qres(Resource,Request));
@@ -263,7 +263,7 @@ react(_Adaptor,retrieve,"_/login",Request) ->
 react(Adaptor,create,"_/login",Request) ->
     io:format("~n Authenticating ~n"),
     %% Todo need to handle cases where login params are no provided
-    Attribs = attributes("POST",Request),
+    Attribs = attributes('POST',Request),
     Id = proplists:get_value("identity", Attribs),
     Pswd = proplists:get_value("password", Attribs),
     case identity_server:authenticate(Id,Pswd) of
@@ -288,7 +288,7 @@ react(_Adaptor,retrieve,"_/logout" ++ _,Request) ->
 % Tag resource (or external url) using 'Post' under identities ID tags
 % This is like tag posting, tagging to a resource's tag fork or to a identity tag fork
 react(Adaptor,create,"_/tag/" ++ Dest,Request) ->
-    Attributes = attributes("POST",Request), 
+    Attributes = attributes('POST',Request), 
     % Todo fixes dstination as a provided actor (dest) this could be opened to be less specific as in bookmarking sending a tagged hyperlink to a given resource.
     tag(Adaptor,qres(?IDENTITIES ++ ?DOMAINSEPERATOR ++ "/" ++ Dest ++ "/tags",Request),Request,Attributes);
 
@@ -354,7 +354,7 @@ react(Adaptor,retrieve,"_/search/" ++ Tokens,Request) ->
 
 react(Adaptor,create,"_/id/",Request) ->
     Domain = domain(Request),
-    Attributes = attributes("POST",Request),
+    Attributes = attributes('POST',Request),
     Item = "_/id/" ++ attribute:today() ++ "_" ++ title(Attributes),
     case actor_server:new(credentials(Request),?MODULE,Domain,Item,Attributes) of
 	{ok,_Xref} -> 
@@ -391,7 +391,7 @@ react(Adaptor,create,"_/acl/" ++ Id,Request) ->
 
 react(Adaptor,update,"_/acl/" ++ Id,Request) ->
     % contains resource (Qitem, or use referer) being ACL'ed + controls
-    Attributes = attributes("POST",Request), 
+    Attributes = attributes('POST',Request), 
     {Resource,Attrib} = case get_option("resource",Attributes) of
 		   {undefined,Attr} -> 
 		       {referer(Request),Attr};
@@ -441,7 +441,7 @@ react(Adaptor,update,"_/acl/" ++ Id,Request) ->
 react(Adaptor,retrieve,Resource,Request) ->
     %% Todo this is an untidy hack! the credentials call should remove token attribs, and return a tuple like {Credentials,Attributes}, this should be called at a higher level e.g allowing react(adaptor(Ext,accepts(Request)),retrieve,Resource,{Credentials,Attributes},Request);
     Credentials = credentials(Request),
-    {_Token,Attributes} = get_option("token",attributes("GET",Request)),
+    {_Token,Attributes} = get_option("token",attributes('GET',Request)),
     %io:format("Retrieving resource ~s~n",[Resource]),
     case lists:last(Resource) of
 	$/ -> react(Adaptor,list,Resource,Request);
@@ -482,10 +482,10 @@ react(Adaptor,retrieve,Resource,Request) ->
 react(Adaptor,list,Resource,Request) ->
     %% Todo Can we add in graph queries here as well a domain queries, and distinguish between them? Basic requirement is ability to differentiate between domain and non domian queries via a is_domain(Resource).
     Credentials = credentials(Request),
-    {_Token,Attributes} = get_option("token",attributes("GET",Request)),
+    {_Token,Attributes} = get_option("token",attributes('GET',Request)),
     [_|Niamod] = lists:reverse(qres(Resource,Request)),
     Domain = lists:reverse(Niamod),
-    case actor_server:q(Credentials,?MODULE,Domain, attributes("GET",Request)) of
+    case actor_server:q(Credentials,?MODULE,Domain, attributes('GET',Request)) of
 	{error,Error} -> 
 	    error(Adaptor,list,Resource,Request,Error);
 	{autherror,Why} ->
@@ -500,7 +500,7 @@ react(Adaptor,create,Resource,Request) ->
 	$/ ->
 	    Credentials = case credentials(Request) of
 			      {annonymous} ->
-				  forbidden(Resource,Request,"Not logged in");
+				  {annonymous};
 			      {token,Token} ->
 				  {uri,identity_server:actor_from_token(Token)};
 			      {uri,Actor} ->
@@ -510,20 +510,32 @@ react(Adaptor,create,Resource,Request) ->
 		[] -> error(Adaptor,create,Resource,Request,"Cannot create resource as child of unknown resource/domain " ++ Resource);
 		Qitem ->
 		    [Domain,Res] = string:tokens(Qitem,?DOMAINSEPERATOR),
-		    {Tags,Attributes} = get_option("tags",attributes("POST",Request)),		 
+		    {Tags,Attribs} = get_option("tags",attributes('POST',Request)),
+		    {_Token,Atts} = get_option("token",Attribs),
+		    {Redirect,Attributes} = get_option("redirect",Atts),
 		    Item = Res ++ attribute:today() ++ "_" ++ title(Attributes),
 		    case actor_server:create(Credentials,?MODULE,Domain,Item,Attributes) of
 			{ok,_Xref} -> 
 			    case Tags of
 				undefined ->
-				    react(Adaptor,retrieve,Resource,Request);
+				    case Redirect of
+					undefined ->
+					    react(Adaptor,retrieve,Resource,Request);
+					_ -> 
+					    redirect(create,Redirect,Request,[])
+				    end;
 				Tags ->
 				    {uri,A} = Credentials,
 				    Dest = A ++ "/tags",
 				    case actor_server:tag(Credentials,?MODULE,Dest,Domain ++ ?DOMAINSEPERATOR ++ Item,string:tokens(Tags," ")) of
 					{ok,Iacl} ->
 					    actor_server:update(Credentials,?MODULE,Dest,[{Item,Tags}|Attributes]),
-					    react(Adaptor,retrieve,Resource,Request);
+					    case Redirect of
+						undefined ->
+						    react(Adaptor,retrieve,Resource,Request);
+						_ ->
+						    redirect(create,Redirect,Request,[])
+					    end;
 					{error,Error} -> 
 					    error(Adaptor,update,"_/tag/" ++ Dest,Request,Error);
 					{autherror,Why} ->
@@ -542,7 +554,7 @@ react(Adaptor,create,Resource,Request) ->
     end;
 
 react(Adaptor,update,Resource,Request) ->
-    case actor_server:update(credentials(Request),?MODULE,qres(Resource,Request), attributes("POST",Request)) of
+    case actor_server:update(credentials(Request),?MODULE,qres(Resource,Request), attributes('POST',Request)) of
 	{ok,_Xref} -> 
 	    react(Adaptor,retrieve,Resource,Request);
 	{error,Error} -> 
@@ -601,6 +613,9 @@ redirect(retrieve,Resource,Request,Headers) ->
     Headers2 = [{"Location",?CONTEXT ++ Resource}|Headers],
     Request:respond({303, [{"Content-Type", "text/html"} | Headers2], a(?CONTEXT ++ Resource)});
 %% None get based redirect, ask browser to 'GET' on Resource
+redirect(Operation,"http://" ++ Resource,Request,Headers) when Operation /= retrieve ->
+    Headers2 = [{"Location","http://" ++ Resource}|Headers],
+    Request:respond({303, [{"Content-Type", "text/html"} | Headers2], a(?CONTEXT ++ Resource)});
 redirect(Operation,Resource,Request,Headers) when Operation /= retrieve ->
     Headers2 = [{"Location",?CONTEXT ++ Resource}|Headers],
     Request:respond({303, [{"Content-Type", "text/html"} | Headers2], a(?CONTEXT ++ Resource)}).
@@ -779,7 +794,7 @@ qres(Resource,Req) ->
 domain(Request) ->
     ?DOMAIN ++ ?CONTEXT.
 
-attributes("POST",Request) ->
+attributes('POST',Request) ->
     Request:parse_post();
 attributes(_,Request) ->
     Request:parse_qs().

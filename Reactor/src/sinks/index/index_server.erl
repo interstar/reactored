@@ -114,7 +114,7 @@ handle_call({sink,Action}, _From, State) ->
 		     search_util:delete(Action#item.xref),
 		     tag_util:delete(Action#item.xref), 
 		     control_util:delete(Action#item.xref);
-		 "create" ->
+		 "create" -> 
 		     search_util:index(Action#item.xref,Action#item.description);
 		 "update" ->
 		     search_util:update(Action#item.xref,Action#item.description);

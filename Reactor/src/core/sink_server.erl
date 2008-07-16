@@ -67,7 +67,7 @@ start_link() ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
-    monostable:start(?MODULE,fetch,10000),
+    monostable:start(?MODULE,fetch,5000),
     Queues = ets:new(?MODULE,[]),
     ets:insert(Queues,{?DOMAIN ++ ?CONTEXT ++ ?SYSTEM,0}),
     io:format("~p starting~n",[?MODULE]),
