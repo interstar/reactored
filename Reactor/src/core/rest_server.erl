@@ -629,7 +629,7 @@ unauthorised(Resource,Request) ->
 forbidden(Resource,Request,Why) ->
     Headers = [],
     Reason = lists:flatten("Resource :" ++ ?CONTEXT ++ Resource ++ ", Forbidden, Reason : " ++ Why ++ "\n"),
-    Request:respond({403, [{"Content-Type", "plain/text"} | Headers], Reason}).
+    Request:respond({403, [{"Content-Type", "html/text"} | Headers], Reason}).
 
 adaptor("atom" ++ _, _Accept) ->
     atom_adaptor;
