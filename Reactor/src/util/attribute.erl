@@ -508,6 +508,8 @@ item_type([{"uri",V}|Attribs],It,Type,Atts) ->
     item_type(Attribs,It#item{uri=V},Type,Atts);
 item_type([{"xref",V}|Attribs],It,Type,Atts) ->
     item_type(Attribs,It#item{xref=V},Type,Atts);
+item_type([{"groups",V}|Attribs],It,Type,Atts) ->
+    item_type(Attribs,It#item{groups=V},Type,Atts);
 item_type([{K,V}|Attribs],It,Type,Atts) -> 
     item_type(Attribs,It,attribute,[{K,V}|Atts]);
 item_type([],It,Type,Atts) ->
@@ -533,22 +535,16 @@ store_attributes(Domain,Item,Attributes) ->
 	[] ->
 	    mnesia:dirty_write(It),
 	    {atomic,Now};
-	[_] ->
+	_ ->
 	    F = fun() ->
-						%ensure_item(Domain,Item,Timestampid),
+			%ensure_item(Domain,Item,Timestampid),
 			case mnesia:read({item,item_id(Domain,Item)}) of
 			    [] ->  
 				mnesia:write(It);
 			    [_] -> 
 				void
 			end,
-
-			case Atts of 
-			    [] -> 
-				void; 
-			    A ->
-				lists:foreach(fun(At) -> store_attribute(Domain,Item,At) end,As)
-			end,
+			lists:foreach(fun(At) -> store_attribute(Domain,Item,At) end,As),
 			Now
 		end,
 	    mnesia:transaction(F)
