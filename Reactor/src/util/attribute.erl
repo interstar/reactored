@@ -537,13 +537,7 @@ store_attributes(Domain,Item,Attributes) ->
 	    {atomic,Now};
 	_ ->
 	    F = fun() ->
-			%ensure_item(Domain,Item,Timestampid),
-			case mnesia:read({item,item_id(Domain,Item)}) of
-			    [] ->  
-				mnesia:write(It);
-			    [_] -> 
-				void
-			end,
+			mnesia:write(It),
 			lists:foreach(fun(At) -> store_attribute(Domain,Item,At) end,As),
 			Now
 		end,
@@ -658,10 +652,7 @@ store_attribute(Domain,Item,{write,item,Name,Attributes}) ->
 
 % Attribute storage
 store_attribute(Domain,Item,{write,attribute,Name,Attributes}) ->
-    case qlc:e(retrieve_attributes_by_name(Domain,Item,Name)) of
-	[] -> mnesia:write(#attribute{id=next_oid(Domain,Item),item=item_id(Domain,Item),name=Name,value=Attributes});
-	[It] -> mnesia:write(It#attribute{value=merge_attributes(Attributes,It#attribute.value)})
-    end;
+    mnesia:write(#attribute{id=next_oid(Domain,Item),item=item_id(Domain,Item),name=Name,value=Attributes});
 store_attribute(Domain,Item,{update,attribute,Name,Attributes}) ->
     [It] = qlc:e(retrieve_attributes_by_name(Domain,Item,Name)),
     Nit = It#attribute{value=Attributes}, 
