@@ -232,7 +232,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% This stuff needs to be much clearer visually (seperate files)
 check_access({annonymous},_Service,Command,_Request) ->
     Reason = "Credentials (annonymous) not suitable, authentication failure",
-    {error,"/Users/annonymous",atom_to_list(Command) ++ " failed dues to :"  ++ Reason};
+    {error,"annonymous",atom_to_list(Command) ++ " failed dues to :"  ++ Reason};
 %% A participant can do all of this things with their own profile
 check_access({uri,Iuri},_Service,retrieve,{Iuri,_Attributes}) -> {ok,Iuri};
 check_access({uri,Iuri},_Service,q,{Iuri,_Attributes}) -> {ok,Iuri};
@@ -241,7 +241,7 @@ check_access({uri,Iuri},_Service,Command,{Uri,Attributes}) ->
     check_privileges(Iuri,Uri,Command,get_privileges(Iuri,{Uri,Attributes}));
 check_access({token,Token},Service,Command,{Uri,Attributes}) -> 
     case actor_from_token(Token) of
-	annonymous ->
+	"annonymous" -> 
 	    {error,"",error({"Badly formed Credentials for command ",atom_to_list(Command) ++ ",Token not recognised ",Service,Command,Uri,Attributes})};
 	Iuri ->
 	    check_privileges(Iuri,Uri,Command,get_privileges(Iuri,{Uri,Attributes}))
@@ -355,7 +355,7 @@ actor_from_token(Token) ->
     Ia = identity_adaptor(),
     case Ia:identify(Token) of
 	{error,_Error} ->
-	    annonymous;
+	    "annonymous";
 	{ok,Uri} ->
 	    Uri
     end.
