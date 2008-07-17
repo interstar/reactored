@@ -95,6 +95,10 @@ retrieve({raw,Qitem}) when is_list(Qitem)  ->
 
 retrieve({uri,Uri}) when is_list(Uri)  -> 
     retrieve(Uri, byuri);
+retrieve({xref,Uri}) when is_list(Uri)  -> 
+    retrieve(Uri, xref);
+retrieve({item,Uri}) when is_list(Uri)  -> 
+    retrieve(Uri, item);
 
 retrieve(Ref)  -> 
     retrieve(Ref, byref).
@@ -105,6 +109,13 @@ retrieve(Ref, byref) ->
 retrieve(Uri, byuri) -> 
     do(qlc:q([X || X <- mnesia:table(item),
 		   X#item.uri =:= Uri]));
+retrieve(Uri, xref) -> 
+    do(qlc:q([X#item.xref || X <- mnesia:table(item),
+		   X#item.uri =:= Uri]));
+retrieve(Uri, item) -> 
+    do(qlc:q([X#item.item || X <- mnesia:table(item),
+		   X#item.uri =:= Uri]));
+
 
 retrieve(Qitem, raw) -> 
     F = fun() ->
@@ -481,6 +492,8 @@ item_type([{K,V,_Replace}|Attribs],It,Type,Atts) ->
     item_type(Attribs,It,Type,[{K,V,_Replace}|Atts]);
 item_type([{"created",V}|Attribs],It,Type,Atts) ->
     item_type(Attribs,It#item{created=to_i(V)},Type,Atts);
+item_type([{"modified",V}|Attribs],It,Type,Atts) ->
+    item_type(Attribs,It#item{modified=to_i(V)},Type,Atts);
 item_type([{"title",V}|Attribs],It,Type,Atts) ->
     item_type(Attribs,It#item{title=V},Type,Atts);
 item_type([{"description",V}|Attribs],It,Type,Atts) ->
@@ -491,6 +504,10 @@ item_type([{"type",V}|Attribs],It,Type,Atts) ->
     item_type(Attribs,It#item{type=V},Type,Atts);
 item_type([{"status",V}|Attribs],It,Type,Atts) ->
     item_type(Attribs,It#item{status=V},Type,Atts);
+item_type([{"uri",V}|Attribs],It,Type,Atts) ->
+    item_type(Attribs,It#item{uri=V},Type,Atts);
+item_type([{"xref",V}|Attribs],It,Type,Atts) ->
+    item_type(Attribs,It#item{xref=V},Type,Atts);
 item_type([{K,V}|Attribs],It,Type,Atts) -> 
     item_type(Attribs,It,attribute,[{K,V}|Atts]);
 item_type([],It,Type,Atts) ->
@@ -512,23 +529,30 @@ store_attributes(Domain,Item,Attributes) ->
     {It,Type,Atts} = write_item(Domain,Item,Now,Attributes),
     As = put_attributes(Atts),
     %io:fwrite("Attribs ~p~n",[Data]),
-    F = fun() ->
-	%ensure_item(Domain,Item,Timestampid),
-		case mnesia:read({item,item_id(Domain,Item)}) of
-		    [] ->  
-			mnesia:write(It);
-		    [_] -> 
-			void
+    case Atts of
+	[] ->
+	    mnesia:dirty_write(It),
+	    {atomic,Now};
+	[_] ->
+	    F = fun() ->
+						%ensure_item(Domain,Item,Timestampid),
+			case mnesia:read({item,item_id(Domain,Item)}) of
+			    [] ->  
+				mnesia:write(It);
+			    [_] -> 
+				void
+			end,
+
+			case Atts of 
+			    [] -> 
+				void; 
+			    A ->
+				lists:foreach(fun(At) -> store_attribute(Domain,Item,At) end,As)
+			end,
+			Now
 		end,
-		case Atts of 
-		    [] -> 
-			void; 
-		    A ->
-			lists:foreach(fun(At) -> store_attribute(Domain,Item,At) end,As)
-		end,
-		Now
-    end,
-    mnesia:transaction(F).
+	    mnesia:transaction(F)
+	end.
 
 store_attributes(Qitem,Attributes) -> % updating only
     Data = put_attributes(Attributes),

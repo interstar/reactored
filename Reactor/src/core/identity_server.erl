@@ -288,7 +288,7 @@ revoke(Iuri,{Uri,Attributes}) ->
     index_server:revoke(Iuri,Uri,get_acl(Attributes)).
 
 inherit(Iuri,{Uri,Attributes}) ->
-    {_,Parent} = proplists:lookup("parent",Attributes),
+    {_,Parent} = proplists:lookup("groups",Attributes),
     index_server:inherit(Iuri,Uri,Parent).
 
 identity_adaptor() ->

@@ -380,11 +380,11 @@ init([]) ->
 
 % Lookup function to retrieve Qitem from Uri
 handle_call({lookup,Uri}, _From, State) ->
-    Reply = case attribute_server:retrieve({uri,Uri}) of
+    Reply = case attribute_server:retrieve({item,Uri}) of
 		{ok,[]} ->
 		    [];
 		{ok,[It]} ->
-		    It#item.item
+		    It
 	    end,
     {reply, Reply, State};
 
@@ -485,7 +485,7 @@ handle_call({identity,Credentials,Service,delete,Item}, _From, State) ->
 handle_call({Credentials,Service,create,Domain, Item, Attributes}, _From, State) ->
     %% Note special case of authority based on parent ACL having 'create' control
     Parent = attribute:parent(Domain,Item),
-    Attribs = [{"parent",Parent}|Attributes],
+    Attribs = [{"groups",Parent}|Attributes],
     Reply = case identity_server:authorise(Credentials,Service,create,{Parent, Attributes}) of 
 		{ok,Actor} -> 
 		    case attribute_server:create(Domain,Item,[{"author",Actor}|Attribs]) of

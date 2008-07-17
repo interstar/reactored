@@ -527,7 +527,8 @@ react(Adaptor,create,Resource,Request) ->
 				Tags ->
 				    {uri,A} = Credentials,
 				    Dest = A ++ "/tags",
-				    case actor_server:tag(Credentials,?MODULE,Dest,Domain ++ ?DOMAINSEPERATOR ++ Item,string:tokens(Tags," ")) of
+				    Tagz = string:tokens(Tags," "),
+				    case identity_server:tag(A,Domain ++ ?DOMAINSEPERATOR ++ Item,Tagz) of
 					{ok,Iacl} ->
 					    actor_server:update(Credentials,?MODULE,Dest,[{Item,Tags}|Attributes]),
 					    case Redirect of
