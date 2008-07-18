@@ -510,10 +510,15 @@ react(Adaptor,create,Resource,Request) ->
 		[] -> error(Adaptor,create,Resource,Request,"Cannot create resource as child of unknown resource/domain " ++ Resource);
 		Qitem ->
 		    [Domain,Res] = string:tokens(Qitem,?DOMAINSEPERATOR),
-		    {Tags,Attribs} = get_option("tags",attributes('POST',Request)),
-		    {_Token,Atts} = get_option("token",Attribs),
-		    {Redirect,Attributes} = get_option("redirect",Atts),
-		    Item = Res ++ attribute:today() ++ "_" ++ title(Attributes),
+		    {Tags,A1} = get_option("tags",attributes('POST',Request)),
+		    {_Token,A2} = get_option("token",A1),
+		    {Redirect,A3} = get_option("redirect",A2),
+		    {Item,Attributes} = case get_option("itemid",A3) of
+					    {undefined,A4} ->
+						{Res ++ attribute:today() ++ "_" ++ title(A4),A4};
+					    {Id,A4} ->
+						{Res ++ Id,A4}
+					end,
 		    case actor_server:create(Credentials,?MODULE,Domain,Item,Attributes) of
 			{ok,_Xref} -> 
 			    case Tags of
