@@ -225,7 +225,7 @@ retrieve(Domain, Item, [Attribute]) ->
 	[] -> []
     end.
 
-%% TODO this is now broken since domain changes etc..							
+%% TODO this is now broken since domain changes etc..				retrieve(Domain, Item, basic) -> 			
 q(Domain) -> 
 	do(qlc:q([Z#attribute.id || 
 		     Z <- mnesia:table(attribute),

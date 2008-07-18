@@ -507,7 +507,8 @@ react(Adaptor,create,Resource,Request) ->
 				  {uri,Actor}
 			  end,
 	    case actor_server:lookup(qres(Resource,Request)) of
-		[] -> error(Adaptor,create,Resource,Request,"Cannot create resource as child of unknown resource/domain " ++ Resource);
+		[] ->
+		    error(Adaptor,create,Resource,Request,"Cannot create resource as child of unknown resource/domain " ++ Resource);
 		Qitem ->
 		    [Domain,Res] = string:tokens(Qitem,?DOMAINSEPERATOR),
 		    {Tags,A1} = get_option("tags",attributes('POST',Request)),

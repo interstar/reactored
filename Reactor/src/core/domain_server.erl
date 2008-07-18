@@ -168,8 +168,8 @@ code_change(_OldVsn, State, _Extra) ->
 queue(Domain,{nomatch})->
     void;
 queue(Domain,{Sink,Data})->
-    case queue_server:add(Domain,Sink,Data) of
-	{ok} -> void;
+    case queue_server:add(?DOMAIN ++ ?CONTEXT ++ ?QUEUE,Sink,Data) of
+	{ok,Xref} -> Xref;
 	{error,Why} -> error({"Error putting on " ++ Domain ++ " queue",Why,{Sink,Data}})
     end;
 queue(Domain,Unrecognised) ->
@@ -191,10 +191,11 @@ get_server(Matchername) -> % the matchers are OTP applications we need to call m
 load_matcher(Domain) ->
     %% Start matcher OTP app, if module fails to load/start use error app instead
     Matcher = case domain:retrieve(Domain) of
-		  {ok,{atomic,[{domain,_Dom,_Owner,undefined}]}} -> ?ERRORMATCHER;
-		  {ok,{atomic,[{domain,_Dom,_Owner,Match}]}} -> Match;
+		  {atomic,[{domain,_Dom,_Owner,undefined}]} -> ?ERRORMATCHER;
+		  {atomic,[{domain,_Dom,_Owner,Match}]} -> Match;
 		  _ -> ?ERRORMATCHER
 	      end,
+    io:format("About to load matcher ~p~n",[Matcher]),
     case application:load(Matcher) of
 	ok -> 
 	    start(Matcher);
@@ -202,7 +203,7 @@ load_matcher(Domain) ->
 		   start(Matcher),
 		   Matcher;
 	{error,_Why} -> 
-	    io:format("Matcher not loaded ~p",[Matcher]),
+	    io:format("Matcher not loaded ~p~n",[Matcher]),
 	    ?ERRORMATCHER %flag an error?
     end.
 
@@ -211,7 +212,7 @@ start(Matcher) ->
 	ok -> Matcher;
 	{error,{already_started,matcher}} -> Matcher;
 	{error,_Why} -> 
-	    io:format("Matcher not started ~p",[Matcher]),
+	    io:format("Matcher not started ~p~n",[Matcher]),
 	    ?ERRORMATCHER %flag an error?
     end.
 
