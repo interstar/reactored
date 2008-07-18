@@ -52,7 +52,7 @@ append(_Actor,_Service,_Command,_Domain,_Resource,_Params) ->
 
 
 attribs(Params) ->
-    attribs(lists:sort(Params),[]).
+    attribs(lists:reverse(lists:sort(Params)),[]).
 
 attribs([{"_" ++ _K,V}|Params],Out) ->
    attribs(Params,["\"" ++ V ++ "\"" |Out]);

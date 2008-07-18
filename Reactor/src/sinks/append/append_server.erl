@@ -125,10 +125,20 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 
 append(F,Terms) ->
-	{ok, S} = file:open(F, [append]),
-	case io:format(S,"~s~n",[Terms]) of
-		ok -> Result = ok;
-		{error, E} -> Result = {error,"Error appending \n" ++ E}
-	end,
-	file:close(S),
-	Result.
+	case file:open(F, [append]) of
+	    {error,Error} ->
+		{error,{"Could not append file",Error}};
+	    {ok, S} ->
+		case io:format(S,"~s~n",[Terms]) of
+		    ok -> 
+			Result = ok;
+		    {error, E} -> 
+			Result = {error,"Error appending \n" ++ E}
+		end,
+		file:close(S),
+		Result
+	end.
+
+error(Error) ->
+    error_logger:error_msg("Append server - Says Whoops ~p~n",[Error]),
+    Error.
