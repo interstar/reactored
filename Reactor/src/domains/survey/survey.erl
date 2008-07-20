@@ -41,7 +41,7 @@ append(Actor,_Service,create,_Domain,_Resource,Params) ->
 	Fields ->
 	    {_,Xref} = proplists:lookup("xref",Params),
 	    Data = [{"title", ?DOCROOT ++ "/survey.csv"},
-		    {"description",string:join(Fields,",")},
+		    {"description",lists:flatten(item:iso_8601_fmt({date(),time()})) ++ "," ++ string:join(Fields,",")},
 		    {"author",Actor},
 		    {"type","append"},
 		    {"xref",Xref}],

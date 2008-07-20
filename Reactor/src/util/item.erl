@@ -20,7 +20,7 @@
 -module(item).
 -author('awood@alan-woods-macbook.local').
 -include("schema.hrl").
--export([created/1,modified/1,attribute/1,format_timestamp/1,is_url/1]).
+-export([created/1,modified/1,attribute/1,format_timestamp/1,is_url/1,iso_8601_fmt/1]).
 
 created(It) when is_record(It,item) ->
     lists:flatten(iso_8601_fmt(int_to_datetime(It#item.created))).
