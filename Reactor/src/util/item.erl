@@ -20,7 +20,7 @@
 -module(item).
 -author('awood@alan-woods-macbook.local').
 -include("schema.hrl").
--export([created/1,modified/1,attribute/1,format_timestamp/1,is_url/1,iso_8601_fmt/1]).
+-export([created/1,modified/1,attribute/1,format_timestamp/1,is_url/1,iso_8601_fmt/1,chrono/1]).
 
 created(It) when is_record(It,item) ->
     lists:flatten(iso_8601_fmt(int_to_datetime(It#item.created))).
@@ -72,3 +72,25 @@ is_url(Key) ->
 	_ ->
 	    true
     end.
+
+
+chrono(Item)  when is_record(Item,item) -> 
+    lists:sort(fun later/2,[Item]);
+chrono(Items) when is_list(Items) andalso is_record(hd(Items),item) ->
+    lists:sort(fun later/2,Items);
+chrono(Other) -> 
+    Other.
+
+sort(Item)  when is_record(Item,item) -> 
+    lists:sort(fun before/2,[Item]);
+sort(Items) when is_list(Items) andalso is_record(hd(Items),item) ->
+    lists:sort(fun before/2,Items);
+sort(Other) -> 
+    Other.
+
+later(A,B) ->
+    B#item.created < A#item.created.
+
+before(A,B) ->
+    A#item.created < B#item.created.
+

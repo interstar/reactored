@@ -304,7 +304,7 @@ react(Adaptor,retrieve,"_/tags/" ++ Tagz,Request) ->
 	{autherror,Why} ->
 	    forbidden("_/tags/" ++ Tagz,Request,Why);
 	Items -> 
-	    respond(Request,Adaptor:render(Tagged,Url,Items))
+	    respond(Request,Adaptor:render(Tagged,Url,item:chrono(Items)))
     end;
 
 react(Adaptor,create,"_/search/" ++ S,Request) ->
