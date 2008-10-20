@@ -292,6 +292,10 @@ react(Adaptor,create,"_/tag/" ++ Dest,Request) ->
     % Todo fixes dstination as a provided actor (dest) this could be opened to be less specific as in bookmarking sending a tagged hyperlink to a given resource.
     tag(Adaptor,qres(?IDENTITIES ++ ?DOMAINSEPERATOR ++ "/" ++ Dest ++ "/tags",Request),Request,Attributes);
 
+% No tags provided in url, try parameters NOT YET IMPLEMENTED
+react(Adaptor,retrieve,"_/tags/",Request) ->
+    error(Adaptor,retrieve,"_/tags/",Request,"Parameter based tag querying is not currently implemented");
+
 % All Items tagged with tag/tags that participant has retrieve acl for
 react(Adaptor,retrieve,"_/tags/" ++ Tagz,Request) ->
     Domain = domain(Request),

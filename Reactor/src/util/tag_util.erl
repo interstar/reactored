@@ -38,22 +38,28 @@ retrieve(Tags) ->
     T = hd(Tags),
     case lists:member($ ,T) of
 	true -> % OR tags (any tag match)
-	    lists:merge(lists:map(fun find_tagged/1,tags(string:tokens(T," "))));
+	    sets:to_list(sets:intersection(lists:map(fun(Ti) ->
+						sets:from_list(find_tagged(Ti)) end,
+					tags(string:tokens(T," ")))));
+	    %lists:merge(lists:map(fun find_tagged/1,tags(string:tokens(T," "))));
 	_ -> % AND Tags (all tags match)
 	    sets:to_list(sets:intersection(lists:map(fun(Ti) ->
 						sets:from_list(find_tagged(Ti)) end,
-					tags(string:tokens(T,"+")))))
+					tags(Tags))))
     end.
 
 retrieve(Tags,Author) ->
     T = hd(Tags),
     case lists:member($ ,T) of
 	true -> % OR tags (any tag match)
-	    lists:merge(lists:map(fun find_tagged/1,tags(string:tokens(T," "))));
+	    sets:to_list(sets:union(lists:map(fun(Ti) ->
+						sets:from_list(find_tagged(Ti,Author)) end,
+					tags(string:tokens(T," ")))));
+	    %lists:merge(lists:map(fun find_tagged/1,tags(string:tokens(T," "))));
 	_ -> % AND Tags (all tags match)
 	    sets:to_list(sets:intersection(lists:map(fun(Ti) ->
 						sets:from_list(find_tagged(Ti,Author)) end,
-					tags(string:tokens(T,"+")))))
+					tags(Tags))))
     end.
 
 save_tags(TagRecs) ->
