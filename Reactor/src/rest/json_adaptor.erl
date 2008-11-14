@@ -40,14 +40,14 @@ json([],Jsobj) ->
      mochijson2:encode(Jsobj).
 
 item_to_json_obj(It) when is_record(It,item) ->
-    {struct,[{item,It#item.item},
-	     {uri,It#item.uri},
-	     {created,item:created(It)},
-	     {modified,item:modified(It)},
-	     {domain,It#item.domain},
-	     {title,It#item.title},
-	     {description,It#item.description},
-	     {author,It#item.author},
-	     {type,It#item.type},
-	     {status,It#item.status}
+    {struct,[{item,list_to_binary(It#item.item)},
+	     {uri,list_to_binary(It#item.uri)},
+	     {created,list_to_binary(item:created(It))},
+	     {modified,list_to_binary(item:modified(It))},
+	     {domain,list_to_binary(It#item.domain)},
+	     {title,list_to_binary(It#item.title)},
+	     {description,list_to_binary(It#item.description)},
+	     {author,list_to_binary(It#item.author)},
+	     {type,list_to_binary(It#item.type)},
+	     {status,list_to_binary(It#item.status)}
 	    ]}.
