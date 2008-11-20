@@ -499,6 +499,7 @@ react(Adaptor,list,Resource,Request) ->
     end;
 
 
+
 react(Adaptor,create,Resource,Request) ->
     case lists:last(Resource) of
 	$/ ->
@@ -510,19 +511,32 @@ react(Adaptor,create,Resource,Request) ->
 			      {uri,Actor} ->
 				  {uri,Actor}
 			  end,
-	    case actor_server:lookup(qres(Resource,Request)) of
+	    
+	    R = case string:tokens(Resource, "/") of
+			   [_] ->
+			       Resource;
+			   R1 -> 
+			       string:join(R1,"/")
+		       end,
+	    case actor_server:lookup(qres(R,Request)) of
 		[] ->
-		    error(Adaptor,create,Resource,Request,"Cannot create resource as child of unknown resource/domain " ++ Resource);
+		    error(Adaptor,create,Resource,Request,"Cannot create resource as child of unknown resource/domain " ++ R);
 		Qitem ->
 		    [Domain,Res] = string:tokens(Qitem,?DOMAINSEPERATOR),
 		    {Tags,A1} = get_option("tags",attributes('POST',Request)),
 		    {_Token,A2} = get_option("token",A1),
 		    {Redirect,A3} = get_option("redirect",A2),
+		    R2 = case Res of 
+			     "/" ->
+				 Res;
+			     _ ->
+				 Res ++ "/"
+			 end,
 		    {Item,Attributes} = case get_option("itemid",A3) of
 					    {undefined,A4} ->
-						{Res ++ attribute:today() ++ "_" ++ title(A4),A4};
+						{R2 ++ attribute:today() ++ "_" ++ title(A4),A4};
 					    {Id,A4} ->
-						{Res ++ Id,A4}
+						{R2 ++ Id,A4}
 					end,
 		    case actor_server:create(Credentials,?MODULE,Domain,Item,Attributes) of
 			{ok,_Xref} -> 
@@ -649,7 +663,7 @@ adaptor("js" ++ _, _Accept) ->
 adaptor("html" ++ _, _Accept) ->
     html_adaptor;
 adaptor("xhtml" ++ _, _Accept) ->
-    html_adaptor;
+    xhtml_adaptor;
 adaptor("csv" ++ _, _Accept) ->
     csv_adaptor;
 adaptor(_, "application/atom+xml" ++ _) ->

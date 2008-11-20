@@ -37,7 +37,7 @@ json(Items) ->
 json([It|Items],Jsobj) ->
     json(Items,[item_to_json_obj(It)|Jsobj]);
 json([],Jsobj) ->
-     mochijson2:encode(Jsobj).
+     mochijson2:encode({struct,[{<<"items">>,Jsobj}]}).
 
 item_to_json_obj(It) when is_record(It,item) ->
     {struct,[{item,list_to_binary(It#item.item)},
