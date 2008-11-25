@@ -489,14 +489,37 @@ react(Adaptor,list,Resource,Request) ->
     {_Token,Attributes} = get_option("token",attributes('GET',Request)),
     [_|Niamod] = lists:reverse(qres(Resource,Request)),
     Domain = lists:reverse(Niamod),
-    case actor_server:q(Credentials,?MODULE,Domain, attributes('GET',Request)) of
+    case domain:retrieve(Domain) of
+	{atomic,[]} -> % graph query
+	    Res = lists:reverse(tl(lists:reverse(Resource))),
+	    case actor_server:lookup(qres(Res,Request)) of
+		[] ->
+		    error(Adaptor,list,Resource,Request,"Cannot graph unknown resourse" ++ Res);
+		Qitem ->
+		    [Dom|Query] = string:tokens(lists:flatten(Qitem),?DOMAINSEPERATOR),
+		    case actor_server:graph(Credentials,?MODULE,Dom,lists:flatten(Query),Attributes) of
+			{error,Error} -> 
+			    error(Adaptor,list,Resource,Request,Error);
+			{autherror,Why} ->
+			    forbidden(Resource,Request,Why);
+			[] -> %could probably loose this once graph is debugged
+			    io:format("Empty Graph query call args: ~n~p",[{Credentials,?MODULE,Dom,Query,Attributes}]),
+			    respond(Request,Adaptor:render("Resource Graph Query (Empty) " ++ Dom ++ "," ++ Query,Resource,[]));
+			Items ->
+			    respond(Request,Adaptor:render("Resource Graph Query " ++ Domain,Resource,Items))
+		    end
+	    end;
+	_ -> % domain query
+    case actor_server:q(Credentials,?MODULE,Domain, Attributes) of
 	{error,Error} -> 
 	    error(Adaptor,list,Resource,Request,Error);
 	{autherror,Why} ->
 	    forbidden(Resource,Request,Why);
 	Items ->
 	    respond(Request,Adaptor:render("Domain Query " ++ Domain,Resource,Items))
+    end
     end;
+
 
 
 

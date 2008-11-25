@@ -272,14 +272,16 @@ screen(Actor,Domain, Attributes) ->
 
 screen(Actor,Domain, Uri, Attributes) ->
     Results = case attribute_server:graph(Domain, Uri, Attributes) of
-		  {atomic,{_Item,Items}} -> 
+		  {atomic,{_Item,Items}} -> % Todo Is this replaced by below?
+		      Items;
+		  {ok,{atomic,Items}} ->  
 		      Items;
 		  _ -> 
 		      error({"No results for graph query ",Domain, Uri, Attributes}),
 		      []
 	      end,
-    Uris = index_server:controls(Actor,retrieve,[It#item.created || It <- Results]),
-    lists:filter(fun(I) -> lists:member(I#item.item,Uris) end,Results).
+    Uris = index_server:controls(Actor,retrieve,[It#item.xref || {_rel,It} <- Results]),
+    lists:filter(fun(I) -> lists:member(I#item.xref,Uris) end,[Ite || {_rel,Ite} <- Results]).
 
 grant(Iuri,{Uri,Attributes}) ->
     index_server:grant(Iuri,Uri,get_acl(Attributes)).
