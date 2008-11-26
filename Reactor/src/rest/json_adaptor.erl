@@ -27,7 +27,8 @@ render(_Title,_Url,Items) when is_list(Items)  andalso is_record(hd(Items),item)
 render(_Title,_Url,Item) when is_record(Item,item) ->
     {"application/json",json([Item])};
 render(_Title,_Url,Attributes) ->
-    {"application/json",mochijson2:encode({struct,Attributes})}.
+    Item = {struct,[{K,list_to_binary(val(V))} || {K,V} <- Attributes]},
+    {"application/json",mochijson2:encode({struct,[{<<"items">>,[Item]}]})}.
 
 json(Items) when not is_record(hd(Items),item) ->
     mochijson2:encode({struct,Items});
@@ -51,3 +52,10 @@ item_to_json_obj(It) when is_record(It,item) ->
 	     {type,list_to_binary(It#item.type)},
 	     {status,list_to_binary(It#item.status)}
 	    ]}.
+
+val(Val) when is_atom(Val)->
+    atom_to_list(Val);
+val(Val) when is_list(hd(Val))->
+    string:join(Val,",");
+val(Val) ->
+    item:attribute(Val).
