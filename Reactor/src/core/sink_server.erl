@@ -30,7 +30,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0,start/0,stop/0]).
+-export([start_link/1,start/1,stop/0]).
 -export([nudge/1,fetch/0]).
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -41,7 +41,7 @@
 %%====================================================================
 %% API
 %%====================================================================
-start() -> start_link().
+start(Domain) -> start_link(Domain).
 stop() -> gen_server:call(?MODULE,stop).
 
 nudge(Queue) ->
@@ -52,8 +52,8 @@ fetch() ->
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+start_link(Domain) ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [Domain], []).
 
 %%====================================================================
 %% gen_server callbacks
@@ -66,10 +66,10 @@ start_link() ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([]) ->
+init([Domain]) ->
     monostable:start(?MODULE,fetch,5000),
     Queues = ets:new(?MODULE,[]),
-    ets:insert(Queues,{?DOMAIN ++ ?CONTEXT ++ ?SYSTEM,0}),
+    ets:insert(Queues,{Domain ++ ?CONTEXT ++ ?SYSTEM,0}),
     io:format("~p starting~n",[?MODULE]),
     {ok, Queues}.
 

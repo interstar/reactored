@@ -17,7 +17,7 @@
 %%     Further information about Reactored and it's ideas can be found at
 %%     http://www.Reactored.org/
 
--record(config,{domain,email,password,token,branches}).
+-record(config,{domain,home,email,password,token,branches}).
 -record(branch,{name,type,matcher,description}).
 -record(domain,{domain,owner,matcher}).
 -record(item,{item,uri,created,modified,domain,title,description,author,type,status,users,groups,revision,sync,xref}).

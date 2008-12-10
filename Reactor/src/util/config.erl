@@ -1,7 +1,7 @@
 -module(config).
 -include("schema.hrl").
 -include("system.hrl").
--export([start/0,stop/0,debug/1,create_live/1,start/1]).
+-export([start/0,stop/0,debug/1,create_live/1,start/1,load_domain/1]).
 
 % Do this only once!
 create_live(Config) ->
@@ -94,6 +94,7 @@ start(Config)->
     load_reactor(),
     load_domain(Config).
 
+
 %%  mnesia:create_table(usession,[{attributes, record_info(fields,usession)},
 %% 				 {record_name,usession},
 %% 				 {disc_copies,[node()]}]),
@@ -110,6 +111,9 @@ unload_storage() ->
     % backup mnesia?
     mnesia:stop().
 
+load_domain(Conf) when is_record(Conf,config) ->
+    setup_domain(Conf#config.domain,Conf#config.email,Conf#config.password,Conf#config.token,Conf#config.branches);
+
 load_domain(Config) ->
     case file:consult(Config) of
 	{ok,Configs} ->
@@ -120,9 +124,10 @@ load_domain(Config) ->
     end.
 
 setup_domain(Domain,Email,Password,Token,Branches) ->
-    System_Queue = ?DOMAIN ++ ?CONTEXT ++ ?SYSTEM,
-    Domain_Queue = ?DOMAIN ++ ?CONTEXT ++ ?QUEUE,
-    Domain_Admin = ?DOMAIN ++ ?CONTEXT ++ ?DOMAINS,
+    %Domain replaced ?DOMAIN
+    System_Queue = Domain ++ ?CONTEXT ++ ?SYSTEM,
+    Domain_Queue = Domain ++ ?CONTEXT ++ ?QUEUE,
+    Domain_Admin = Domain ++ ?CONTEXT ++ ?DOMAINS,
     %% Create queues for system and domains
     domain_server:create(System_Queue,matcher,?OWNER),
     domain_server:create(Domain_Queue,matcher,?OWNER),

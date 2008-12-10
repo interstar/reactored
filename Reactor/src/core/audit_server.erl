@@ -76,7 +76,7 @@ init([]) ->
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
 handle_call({sink,Action}, _From, State) ->
-    Reply = append(?AUDITFILE,{"Audit Sink sinking - ~p",Action}),
+    Reply = append(config_server:path(audit),{"Audit Sink sinking - ~p",Action}),
     {reply, Reply, State};
 handle_call(stop, _From, State) ->
     {stop,normal,stopped, State};

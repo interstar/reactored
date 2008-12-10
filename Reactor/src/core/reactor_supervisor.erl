@@ -25,6 +25,7 @@
 %%% Created : 22 May 2008 by Alan Wood <awood@alan-woods-macbook.local>
 %%%-------------------------------------------------------------------
 -module(reactor_supervisor).
+-include("schema.hrl").
 -include("system.hrl").
 -behaviour(supervisor).
 
@@ -71,6 +72,35 @@ start_link(Args) ->
 %% specifications.
 %%--------------------------------------------------------------------
 init([]) ->
+    Configfile = case application:get_env(reactor, config_file) of
+		     {ok,File} ->
+			 File ++ ?CONFIG;
+		     _ -> 
+			 ?CONFIG
+		 end,
+    case file:consult(Configfile) of
+	{ok,Configs} ->
+	    Conf = hd(Configs),
+	    io:format("~nInitialising from config file ~s~n", [Configfile]),
+	    prep_store(),
+	    prep_reactor(),
+	    initialize_reactor(Conf);
+	{error,enoent} ->
+	    io:format("~nCould not find config file ~s~n", [Configfile]),
+	    {error,"Could not find config file"};
+	{error,Why} ->
+	    io:format("~nCould not parse config file ~s~n", [Configfile]),
+	    {error,Why};
+	_ ->
+	    {error,"Unknown config error"}
+    end.
+
+
+
+%%====================================================================
+%% Internal functions
+%%====================================================================
+initialize_reactor(Conf) ->
     Ip = case os:getenv("REACTORED_IP") of false -> "0.0.0.0"; Any -> Any end,
     Port = case os:getenv("REACTORED_PORT") of 
 	       false -> 
@@ -85,11 +115,11 @@ init([]) ->
 	   end,
     WebConfig = [{ip, Ip},
                  {port, Port},
-                 {docroot, ?DOCROOT}],
+                 {docroot, Conf#config.home ++ ?DOCROOT}],
 
     Storage = {storage,{attribute_server,start_link,[]},
 	      permanent,2000,worker,[attribute_server]},
-    Sinks = {sinks,{sink_server,start_link,[]},
+    Sinks = {sinks,{sink_server,start_link,[Conf#config.domain]},
 	      permanent,2000,worker,[sink_server]},
     Actions = {actions,{action_server,start_link,[]},
 	      permanent,2000,worker,[action_server]},
@@ -103,10 +133,35 @@ init([]) ->
 	      permanent,2000,worker,[identity_server]},
     Actor = {actors,{actor_server,start_link,[]},
 	      permanent,2000,worker,[actor_server]},
+    Config = {config,{config_server,start_link,[Conf]},
+	      permanent,2000,worker,[config_server]},
     Web = {web,{rest_server,start,[WebConfig]},
 	      permanent,2000,worker,[rest_server]},
-    {ok,{{one_for_one,3,10}, [Storage,Sinks,Actions,Queues,Domains,Patterns,Identity,Actor,Web]}}.
+    {ok,{{one_for_one,3,10}, [Storage,Sinks,Actions,Queues,Domains,Patterns,Identity,Actor,Config,Web]}}.
 
-%%====================================================================
-%% Internal functions
-%%====================================================================
+prep_store() ->
+    mnesia:create_schema([node()]),
+    mnesia:start(),
+    mnesia:create_table(domain,[{attributes, record_info(fields,domain)},
+				{record_name,domain}]),
+    mnesia:create_table(item,[{attributes, record_info(fields,item)},
+			      {record_name,item}]),
+    mnesia:create_table(attribute,[{attributes,record_info(fields,attribute)},
+				   {record_name,attribute}]),
+    mnesia:create_table(identity,[{attributes, record_info(fields,identity)},
+				  {record_name,identity}]),
+    mnesia:create_table(tags,[{attributes, record_info(fields,tags)},
+			      {record_name,tags}]),
+    mnesia:create_table(words,[{attributes, record_info(fields,words)},
+			       {record_name,words}]),
+    mnesia:create_table(control,[{attributes, record_info(fields,control)},
+				 {record_name,control}]),
+    mnesia:create_table(usession,[{attributes, record_info(fields,usession)},
+				 {record_name,usession}]).
+
+% We need to start some OTP Apps first
+prep_reactor() ->
+    application:load(crypto),
+    application:start(crypto),
+    application:load(index),
+    application:start(index).

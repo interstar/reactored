@@ -37,7 +37,6 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--record(state, {}).
 
 %%====================================================================
 %% API
@@ -165,10 +164,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-queue(Domain,{nomatch})->
+queue(_Domain,{nomatch})->
     void;
 queue(Domain,{Sink,Data})->
-    case queue_server:add(?DOMAIN ++ ?CONTEXT ++ ?QUEUE,Sink,Data) of
+    case queue_server:add(config_server:domain() ++ ?CONTEXT ++ ?QUEUE,Sink,Data) of
 	{ok,Xref} -> Xref;
 	{error,Why} -> error({"Error putting on " ++ Domain ++ " queue",Why,{Sink,Data}})
     end;

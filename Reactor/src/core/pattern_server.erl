@@ -136,7 +136,7 @@ code_change(_OldVsn, State, _Extra) ->
 queue({nomatch})->
     void;
 queue({Sink,Data})->
-    case queue_server:add(?DOMAIN ++ ?CONTEXT ++ ?SYSTEM,Sink,Data) of
+    case queue_server:add(config_server:domain() ++ ?CONTEXT ++ ?SYSTEM,Sink,Data) of
 	{ok,Xref} -> Xref;
 	{error,Why} -> error({"Error putting on system queue",Why,{Sink,Data}})
     end;
@@ -160,9 +160,9 @@ error(Error) ->
     Error.
 
 % Redundant
-arrange(Params) ->
-    arrange(lists:sort(Params),[]).
-arrange([{_Key,Val}|Params],Values) ->
-    arrange(Params,[Val|Values]);
-arrange([],Values) ->
-    Values.
+%arrange(Params) ->
+%    arrange(lists:sort(Params),[]).
+%arrange([{_Key,Val}|Params],Values) ->
+%    arrange(Params,[Val|Values]);
+%arrange([],Values) ->
+%    Values.

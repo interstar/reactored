@@ -20,9 +20,10 @@
 {application,reactor,
 	[{description,"Reactored Systems"},
 	{vsn,"1.0"},
-	{modules,[attribute_server,attribute,sink_server,action_server,monostable,trigger,queue_server,queue_util,domain_server,domain,pattern_server,pattern_util,actor_server,identity_server,authenticator,reactor_app,reactor_app,reactor_supervisor]},
-	{registered,[reactor_supervisor,attribute_server,action_server,sinker_server,queue_server,domain_server,pattern_server,actor_server,identity_server]},
+	{modules,[config_server,attribute_server,attribute,sink_server,action_server,monostable,trigger,queue_server,queue_util,domain_server,domain,pattern_server,pattern_util,actor_server,identity_server,authenticator,reactor_app,reactor_app,reactor_supervisor]},
+	{registered,[reactor_supervisor,config_server,attribute_server,action_server,sinker_server,queue_server,domain_server,pattern_server,actor_server,identity_server]},
 	{applications,[kernel,stdlib]},
 	{mod,{reactor_app,[]}},
-	{start_phases,[]}
+	{start_phases,[]},
+	{env, [{config_file,"./config.dat"}]}
 ]}.

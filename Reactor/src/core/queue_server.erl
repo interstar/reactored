@@ -84,15 +84,26 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({put,?DOMAIN ++ ?CONTEXT ++ ?SYSTEM,Sink,Data}, _From, State) ->
-    Id = queue_util:id(),
-    Queue = ?DOMAIN ++ ?CONTEXT ++ ?SYSTEM,
-    Reply = queue_util:add(Queue,Sink,Id,Data),
-    sink_server:nudge(Queue),
-    {reply, Reply, State};
+
+% Redundant replaced by below
+%handle_call({put,config_server:domain() ++ ?CONTEXT ++ ?SYSTEM,Sink,Data}, _From, State) ->
+%    Id = queue_util:id(),
+%    Queue = config_server:domain() ++ ?CONTEXT ++ ?SYSTEM,
+%    Reply = queue_util:add(Queue,Sink,Id,Data),
+%    sink_server:nudge(Queue),
+%    {reply, Reply, State};
+
+
 handle_call({put,Source,Sink,Data}, _From, State) ->
+    System = config_server:domain() ++ ?CONTEXT ++ ?SYSTEM,
+    % Check which queue to place this on system or domain
+    Queue = case string:equal(Source,System) of
+		false ->
+		    config_server:domain() ++ ?CONTEXT ++ ?QUEUE ++ Source;
+		 true ->
+		    System
+		end,
     Id = queue_util:id(),
-    Queue = ?DOMAIN ++ ?CONTEXT ++ ?QUEUE ++ Source,
     Reply = queue_util:add(Queue,Sink,Id,Data),
     sink_server:nudge(Queue),
     {reply, Reply, State};

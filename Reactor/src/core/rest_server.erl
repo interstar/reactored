@@ -97,7 +97,10 @@ react_to(Method,"/" ++ Path,Req, DocRoot) ->
         'POST' ->
             case Path of
                 _ ->
-                    Req:not_found()
+                    Res = upload:store(Req),
+		    io:format("Upload response ~p~n",[Res]),
+		    Headers = [],
+		    Req:respond({200, [{"Content-Type", "text/html"} | Headers], html("<h1>uploaded</h1>")})
             end;
         _ ->
             Req:respond({501, [], []})
@@ -836,11 +839,11 @@ indexes() ->
     mnesia:transaction(F).
 
 qres(Resource,Req) ->
-    ?DOMAIN ++ ?CONTEXT ++ Resource.
+    config_server:domain() ++ ?CONTEXT ++ Resource.
 %% should be able to build this from req:get(raw_path)
 
 domain(Request) ->
-    ?DOMAIN ++ ?CONTEXT.
+    config_server:domain() ++ ?CONTEXT.
 
 attributes('POST',Request) ->
     Request:parse_post();
