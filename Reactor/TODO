@@ -8,5 +8,12 @@ There is so much todo, but here are some pointers.
 
 * ACL profiles :  I am working on at least one of these that works like the original rel3 demo app, we need to explore others.
 
-* Add unicode support
+* Add proper unicode support
 
+* Unify runtime storage into config_server. It currently house basic static config values like home and domain. Bt other OTP parts are using ETS to store/register modues based data/state. It might be beneficial to integrate this seperately into config, using perhaps namespaces (domains) to store ETS data even accross instance perhaps.
+
+* Extend unit test coverage
+
+* Add REST tests (probably using jQuery)
+
+* Documentation, I can only apologise for the lack of it, I really need help here.

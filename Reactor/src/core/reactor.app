@@ -25,5 +25,5 @@
 	{applications,[kernel,stdlib]},
 	{mod,{reactor_app,[]}},
 	{start_phases,[]},
-	{env, [{config_file,"./config.dat"}]}
+	{env, [{config_file,"./"}]}
 ]}.
