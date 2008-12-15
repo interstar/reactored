@@ -65,7 +65,7 @@ unauthorised(Resource,Request) ->
 forbidden(Resource,Request,Why) ->
     Headers = [],
     Reason = lists:flatten("Resource :" ++ ?CONTEXT ++ Resource ++ ", Forbidden, Reason : " ++ Why ++ "\n"),
-    Request:respond({403, [{"Content-Type", "html/text"} | Headers], Reason}).
+    Request:respond({403, [{"Content-Type", "text/html"} | Headers], Reason}).
 
 get_option(Option, Options) ->
     {proplists:get_value(Option, Options), proplists:delete(Option, Options)}.
@@ -234,12 +234,12 @@ safe_char_set(Attribs) ->
 
 show_login_form(Request) ->
     Headers = [],
-    Request:respond({200, [{"Content-Type", "text/html"} | Headers], html(?LOGIN)}).
+    Request:respond({200, [{"Content-Type", "text/html"} | Headers], html(?LOGINFORM)}).
 
 show_login_form(Request,Error) ->
     Message = "<div color='red'>Login falied " ++ Error ++ "</div>",
     Headers = [],
-    Request:respond({200, [{"Content-Type", "text/html"} | Headers], html(?LOGIN ++ Message)}).
+    Request:respond({200, [{"Content-Type", "text/html"} | Headers], html(?LOGINFORM ++ Message)}).
 
 a(Resource) ->
     "<a href=\"" ++ Resource ++ "\">" ++ Resource ++ "</a>\n".

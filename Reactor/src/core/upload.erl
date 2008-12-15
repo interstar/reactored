@@ -3,7 +3,6 @@
 -include("system.hrl").
 -define(DOSSEPERATOR,"\\").
 -define(UNIXSEPERATOR,"/").
--define(RESOURCES,"_resources/").
 -export([store/1]).
 
 store(Req) ->

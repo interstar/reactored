@@ -130,28 +130,6 @@ respond_to(_Adaptor,Operation,"_/echo/" ++ Resource,Credentials,Attributes,Reque
 	       end,   
     Request:respond({200, [], Response});
 
-%% Logging into REST interface
-%% Todo implement plain http login as an alternative to form based login
-respond_to(_Adaptor,retrieve,"_/login",Credentials,Attributes,Request) ->
-    io:format("Cookie ~p~n",[Request:get_cookie_value(?COOKIE)]),
-    rest_helper:show_login_form(Request); % TODO we might just forward to /static/login.html instead, same below on login errors
-respond_to(Adaptor,create,"_/login",Credentials,Attributes,Request) ->
-    io:format("~n Authenticating ~n"),
-    %% Todo need to handle cases where login params are no provided
-    Id = proplists:get_value("identity", Attributes),
-    Pswd = proplists:get_value("password", Attributes),
-    case identity_server:authenticate(Id,Pswd) of
-	{ok,Actor} -> 
-	    io:format("Authenticated ~s~n",[Actor]), 
-	    Header = rest_helper:save_session(Request,Actor),
-	    io:format("Headers ~p~n",[Header]),
-	    %redirect(create,Actor,Request,[Header]);
-	    Request:respond({200, [{"Content-Type", "text/html"} | [Header]], rest_helper:html("<h3>Logged in</h3>")});
-	{error,Error} ->
-	    io:format("Not authenticated ~s~n",[Error]),
-	    rest_helper:show_login_form(Request,Error)
-    end;
-
 respond_to(_Adaptor,retrieve,"_/logout" ++ _,{uri,Actor},Attributes,Request) ->
     rest_helper:remove_session(Request),
     rest_helper:redirect(create,Actor,"_/login",[]);

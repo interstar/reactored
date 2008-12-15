@@ -23,7 +23,7 @@
 -define(DEFAULTIDADAPTOR,identity_adaptor).
 -define(SUMCHARS,256). %% Todo this may now be redundant
 -define(ALLPRIVS,"retrieve,update,delete,create,grant,revoke").
--define(LOGIN,"<form id='login' method='post'><input name='identity' value='identity''/><br/><input password='' type='password' name='password'/><input type='submit' value='login'/></form>").
+-define(LOGINFORM,"<form id='login' method='post'><input name='identity' value='identity''/><br/><input password='' type='password' name='password'/><input type='submit' value='login'/></form>").
 -define(COOKIE,"UserId").
 % 90 days cookie timeout.
 -define(MAXAGE,7776000). 
@@ -32,12 +32,16 @@
 % This is for administrative web functions, which can differ from the main REST server, the example here uses a domain only accessable locally on the system which is more secure. 
 -define(AUDITFILE,"audit.log").
 -define(DOCROOT,"www").
--define(CONTEXT,"/reactor/").
+-define(PUBLIC,"/_public/").
+-define(LOGIN,"/_login").
+-define(RESOURCES,"/_resources/").
+-define(CONTEXT,"/reactor/"). % TODO change this to -define(ITEMS,"/_items/").
 -define(SYSTEM,"_/queue/system").
 -define(QUEUE,"_/queue").
 -define(DOMAINS,"_").
 -define(IDENTITIES,"_/id").
 -define(ACLS,"_/acl").
 -define(CONFIG,"config.dat").
+-define(PROXY,"http://127.0.0.1:9080/").
 
 %  -define(IDS,"Users/"). todo is this replication of identities -> redundant now

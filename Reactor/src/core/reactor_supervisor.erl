@@ -164,4 +164,6 @@ prep_reactor() ->
     application:load(crypto),
     application:start(crypto),
     application:load(index),
-    application:start(index).
+    application:start(index),
+    application:load(inets),
+    application:start(inets).

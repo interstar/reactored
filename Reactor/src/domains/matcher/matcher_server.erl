@@ -30,7 +30,7 @@
 
 %% API
 -export([start_link/0,start/0,stop/0]).
--export([match/6]).
+-export([match/6,intercept/5]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -43,6 +43,9 @@
 %%====================================================================
 match(Actor,Service,Command,Domain,Resource,Params) ->
     gen_server:call(?MODULE,{match,Actor,Service,Command,Domain,Resource,Params}).
+
+intercept(Domain,Method,Path,Req,DocRoot) ->
+    gen_server:call(?MODULE,{intercept,Domain,Method,Path,Req,DocRoot}).
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
@@ -81,6 +84,9 @@ handle_call({match,Actor,Service,Command,Domain,Resource,Params}, _From, State) 
     %% Split to all, writes and read call matching actions
     io:format("Default Matched ~s~n",[Resource]),
     Reply = process(Actor,Service,Command,Domain,Resource,Params),
+    {reply, Reply, State};
+handle_call({intercept,_Domain,_Method,_Path,_Req,_DocRoot}, _From, State) ->
+    Reply = {ok,"Default Interceptor, nothing to see move along now."},
     {reply, Reply, State};
 handle_call(stop, _From, State) ->
     {stop,normal,stopped, State};

@@ -30,7 +30,7 @@
 
 %% API
 -export([start_link/0,start/0,stop/0]).
--export([match/6]).
+-export([match/6,intercept/5]).
 -export([retrieve/0,create/3,retrieve/1,delete/1]).
 
 %% gen_server callbacks
@@ -50,6 +50,11 @@ retrieve(Domain) ->
     gen_server:call(?MODULE,{get,Domain}).
 delete(Domain) ->
     gen_server:call(?MODULE,{delete,Domain}).
+
+% Request handling
+intercept(Domain,Method,Path,Req,DocRoot) ->
+    io:format("about to intercept Domain ~p~n",[Domain]),
+    gen_server:call(?MODULE,{intercept,Domain,Method,Path,Req,DocRoot}).
 
 % Operational match API
 match(Actor,Service,Command,Domain,Resource,Params) ->
@@ -108,6 +113,12 @@ handle_call({delete,Domain},_From,State) ->
 		Error -> {error,error(Error)}
 	    end,
     {reply, Reply, State};
+
+handle_call({intercept,Domain,Method,Path,Req,DocRoot},_From,Interceptors) ->
+    Interceptor = get_matcher(Domain,Interceptors),
+    Reply = apply(Interceptor,intercept,[Domain,Method,Path,Req,DocRoot]),
+    {reply, Reply, Interceptors};
+
 handle_call(stop, _From, State) ->
     {stop,normal,stopped, State};
 handle_call(_Request, _From, State) ->

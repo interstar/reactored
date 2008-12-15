@@ -28,6 +28,7 @@
 -include("schema.hrl").
 -include("system.hrl").
 -define(SERVER,?MODULE).
+-define(HTTP,http_client).
 
 -behaviour(gen_server).
 
@@ -71,6 +72,7 @@ init([Conf]) ->
     io:format("~p starting~n",[?MODULE]),
     %io:format("with config ~n~p~n",[Conf]),
     config:load_domain(Conf),
+    % inets:start(httpc,[{profile,?HTTP}]),
     {ok, Conf}.
 
 %%--------------------------------------------------------------------
@@ -129,6 +131,7 @@ handle_info(_Info, Conf) ->
 %% The return value is ignored.
 %%--------------------------------------------------------------------
 terminate(_Reason, _Conf) ->
+    % inets:stop(httpc, ?HTTP),
     ok.
 
 %%--------------------------------------------------------------------
