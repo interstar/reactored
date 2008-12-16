@@ -95,16 +95,22 @@ react_to(Method,"/~" ++ Resource,Request,_DocRoot) ->
     end;
 
 %% Reactor REST dispatcher
+react_to(Method,?CONTEXT,Request, DocRoot) ->
+    % ToDo Maybe this should be allowed top level root items? everything?
+    Request:respond({501, [], []});
 react_to(Method,?CONTEXT ++ Resource,Request,_DocRoot) ->
     react_to(Method,Resource,Request);
 
 %% Reactor public Resource dispatcher
+react_to(Method,?PUBLIC,Request, DocRoot) ->
+    % ToDo Should pick up home instead  - index.html/htm etc..
+    Request:respond({501, [], []});
 react_to(Method,?PUBLIC ++ Path,Req, DocRoot) ->
     case Req:get(method) of
 	Method when Method =:= 'GET'; Method =:= 'HEAD' ->
 	    case Path of
 		_ ->
-		    Req:serve_file(Path, DocRoot)
+		    Req:serve_file(Path, DocRoot ++ ?PUBLIC)
 	    end;
 	_ ->
 	    Req:respond({501, [], []})
@@ -135,22 +141,41 @@ react_to('POST',?LOGIN,Request,DocRoot) ->
 
 
 %% Reactor Resource dispatcher
-react_to(Method,?RESOURCES ++ Path,Req, DocRoot) ->
-    case Req:get(method) of
-	Method when Method =:= 'GET'; Method =:= 'HEAD' ->
-	    case Path of
+react_to(Method,?RESOURCES,Request, DocRoot) ->
+    Request:respond({501, [], []});
+react_to(Method,?RESOURCES ++ Path,Request, DocRoot) ->
+    [Dom|Resource] = string:tokens(Path,"/"),
+    Domain = rest_helper:qres(Dom,Request),
+    {_Attributes,Credentials} = rest_helper:attributes_and_actor(Request,Method),
+    case Credentials of
+	{annonymous} ->
+	    rest_helper:forbidden(Resource,Request,"You have to be logged in to access domain resources");
+	{uri,Actor} -> 
+	    case Request:get(method) of
+		Method when Method =:= 'GET'; Method =:= 'HEAD' ->
+		    case Path of
+			_ ->
+			    case identity_server:authorise(Credentials,rest_server,retrieve,{Domain ++ ?DOMAINSEPERATOR ++ "/",[]}) of 
+				{ok,_Actor} ->
+				    io:format("Retrieving resource ~s~n",[Path]),
+				    Request:serve_file(Path, DocRoot ++ ?RESOURCES);
+				{error,Actor,Why} ->
+				    error(Why),
+				    rest_helper:forbidden(Resource,Request,"You do not have the access privelages to retrieve this resource")
+			    end
+			    
+		    end;
+		'POST' ->
+		    case Path of
+			_ ->
+						%ToDo this must move teh temp file to ?RESOURCES sub dir and domain hierarchy
+			    Res = upload:store(Request),
+			    io:format("Upload response ~p~n",[Res]),
+			    Request:respond({200,[{"Content-Type","text/html"}],rest_helper:html("<h1>uploaded</h1>")})
+		    end;
 		_ ->
-		    Req:serve_file(Path, DocRoot)
-	    end;
-	'POST' ->
-	    case Path of
-		_ ->
-		    Res = upload:store(Req),
-		    io:format("Upload response ~p~n",[Res]),
-		    Req:respond({200,[{"Content-Type","text/html"}],rest_helper:html("<h1>uploaded</h1>")})
-	    end;
-	_ ->
-	    Req:respond({501, [], []})
+		    Request:respond({501, [], []})
+	    end
     end;
 
 % Domain Interceptors (proxies etc..)

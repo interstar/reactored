@@ -49,7 +49,7 @@ intercept(Domain,Method,Path,Request,Actor,Proxy) ->
 		  end,
 	    Headers = headers(Request),
 	    Url = Proxy ++ Dom ++ "/" ++ string:join(Path,"/"),
-	    io:format("headers ~p~n",[Headers]),
+	    %io:format("headers ~p~n",[Headers]),
 	    Req = case Method of
 		      'POST' ->
 			  {Url,Headers,"application/x-www-form-urlencoded",post_encode(Request)};

@@ -169,6 +169,8 @@ get_credentials(UserId) ->
 		mnesia:read({usession,UserId})
 	end,
     case q(F) of
+	{ok,[]} ->
+	    {annonymous};
 	{ok,Val} ->
 	    Session = hd(Val),
 	    {uri,Session#usession.actor};
