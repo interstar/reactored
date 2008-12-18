@@ -91,7 +91,14 @@ post_encode(Request) ->
 
 headers(Request) ->
     Headers = mochiweb_headers:to_list(Request:get(headers)),
-    [{atom_to_list(K),V} || {K,V} <- Headers].
+    [{key(K),V} || {K,V} <- Headers].
+
+key(K) when is_list(hd(K)) ->
+    hd(K);
+key(K) when is_list(K) ->
+    K;
+key(K) when is_atom(K) ->
+    atom_to_list(K).
 
 error(Error) ->
     error_logger:error_msg("Proxy - Says Whoops ~p~n",[Error]),
