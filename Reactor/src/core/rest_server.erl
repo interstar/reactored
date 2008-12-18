@@ -131,9 +131,16 @@ react_to('POST',?LOGIN,Request,DocRoot) ->
 	{ok,Actor} -> 
 	    io:format("Authenticated ~s~n",[Actor]), 
 	    Header = rest_helper:save_session(Request,Actor),
-	    io:format("Headers ~p~n",[Header]),
+	    %io:format("Headers ~p~n",[Header]),
 	    %redirect(create,Actor,Request,[Header]);
-	    Request:respond({200, [{"Content-Type", "text/html"} | [Header]], rest_helper:html("<h3>Logged in</h3>")});
+	    case proplists:get_value("redirect", Attributes) of
+		   undefined ->
+		    Request:respond({200, [{"Content-Type", "text/html"} | [Header]], rest_helper:html("<h3>Logged in</h3>")});
+		Destination ->
+		    Request:respond({303, [{"Location",Destination}| [Header]], rest_helper:a(Destination)});
+		_ ->
+		    Request:respond({200, [{"Content-Type", "text/html"} | [Header]], rest_helper:html("<h3>Logged in, but could not redirected</h3>")})
+	    end;
 	{error,Error} ->
 	    io:format("Not authenticated ~s~n",[Error]),
 	    rest_helper:show_login_form(Request,Error)
