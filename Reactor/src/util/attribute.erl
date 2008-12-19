@@ -254,7 +254,10 @@ q(Domain,[{"from",From},{"to",To}]) ->
     do(qlc:q([X || X <- mnesia:table(item),
 		   X#item.domain =:= Domain,
 		   X#item.created >= After,
-		   X#item.created =< Before])).
+		   X#item.created =< Before]));
+
+q(Domain,[_]) ->
+    q(Domain,[{"status","all"}]).
 
 q(Domain, null, Options) -> {error,"Not Implemented"};
 q(Domain, qExp, Options) -> {error,"Not Implemented"}.
