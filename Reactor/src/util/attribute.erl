@@ -256,7 +256,7 @@ q(Domain,[{"from",From},{"to",To}]) ->
 		   X#item.created >= After,
 		   X#item.created =< Before]));
 
-q(Domain,[_]) ->
+q(Domain,_) ->
     q(Domain,[{"status","all"}]).
 
 q(Domain, null, Options) -> {error,"Not Implemented"};

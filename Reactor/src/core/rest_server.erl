@@ -196,6 +196,7 @@ react_to(Method,"/" ++ Path,Request,_DocRoot) ->
 	{annonymous} ->
 	    rest_helper:forbidden(Resource,Request,"You have to be logged in to access domains");
 	{uri,Actor} -> 
+	    % ToDo optimise by using a lookup call rather than this heavy query
 	    case domain:retrieve(Domain) of
 		{atomic,[]} ->
 		    rest_helper:error(html_adaptor,Method,"/_" ++ Path,Request,"No domain for interceptor");
