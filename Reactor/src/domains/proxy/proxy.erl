@@ -50,13 +50,14 @@ intercept(Domain,Method,Path,Request,Actor,Proxy) ->
 	    Headers = headers(Request),
 	    Url = Proxy ++ Dom ++ "/" ++ string:join(Path,"/"),
 	    %io:format("headers ~p~n",[Headers]),
-	    Req = case Method of
+	    {M,Req,HO,O} = case Method of
 		      'POST' ->
-			  {Url,Headers,"application/x-www-form-urlencoded",post_encode(Request)};
+			  {post,{Url,Headers,"application/x-www-form-urlencoded",post_encode(Request)},[],[{body_format, binary}]};
 		      'GET' ->
-			  {Url,Headers}
+			  {get,{Url ++ query_string(Request),Headers},[],[]}
 		  end,
-	    case http:request(method(Method),Req,[],[]) of
+	    %io:format("proxy requesting ~p~n",[Req]),
+	    case http:request(M,Req,HO,O) of
 		{ok,Result} ->
 		    {ok,Result};
 		{error,Reason} ->
@@ -68,26 +69,35 @@ intercept(Domain,Method,Path,Request,Actor,Proxy) ->
 	    {error,forbidden}
     end.
 
-method(Method) ->
-    case Method of
-	'HEAD' ->
-	    head;
-	'GET' ->
-	    get;
-	'PUT' ->
-	    put;
-	'POST' ->
-	    post;
-	'TRACE' ->
-	    trace;
-	'OPTIONS' ->
-	    options;
-	'DELETE' ->
-	    delete
-    end.
 
 post_encode(Request) ->
-    list_to_binary(string:join([K ++ "=" ++ V ||{K,V} <- rest_server:attributes(Request)],"&")).
+    Body = Request:recv_body(),
+    io:format("Proxied post body ~p~n",[Body]),
+    Body.
+    %list_to_binary(mochiweb_util:urlencode(rest_server:attributes(Request)).
+%%     Attributes = case Request:recv_body() of
+%%                          undefined ->
+%%                              [];
+%%                          Binary ->
+%%                              case get_primary_header_value("content-type") of
+%%                                  "application/x-www-form-urlencoded" ++ _ ->
+%%                                      mochiweb_util:parse_qs(Binary);
+%%                                  _ ->
+%%                                      []
+%%                              end
+%%                      end,
+%%     list_to_binary(string:join([K ++ "=" ++ V ||{K,V} <- Attributes],"&")).
+
+query_string(Request) ->
+    {_, QueryString, _} = mochiweb_util:urlsplit_path(Request:get(raw_path)),
+    %Attributes = mochiweb_util:parse_qs(QueryString),
+    %io:format("Proxied Attributes ~p~n",[Attributes]),
+    case QueryString of %mochiweb_util:urlencode(Attributes)
+	[] ->
+	    "";
+	Qs -> 
+	    "?" ++ Qs
+    end.
 
 headers(Request) ->
     Headers = mochiweb_headers:to_list(Request:get(headers)),
