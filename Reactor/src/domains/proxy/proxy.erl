@@ -50,43 +50,24 @@ intercept(Domain,Method,Path,Request,Actor,Proxy) ->
 	    Headers = headers(Request),
 	    Url = Proxy ++ Dom ++ "/" ++ string:join(Path,"/"),
 	    %io:format("headers ~p~n",[Headers]),
-	    {M,Req,HO,O} = case Method of
-		      'POST' ->
-			  {post,{Url,Headers,"application/x-www-form-urlencoded",post_encode(Request)},[],[{body_format, binary}]};
-		      'GET' ->
-			  {get,{Url ++ query_string(Request),Headers},[],[]}
-		  end,
-	    %io:format("proxy requesting ~p~n",[Req]),
-	    case http:request(M,Req,HO,O) of
-		{ok,Result} ->
-		    {ok,Result};
-		{error,Reason} ->
-		    error(Reason),
-		    {error,"Proxy error"}
+	    case Method of
+		'GET' ->
+		    case http:request(get,{Url ++ query_string(Request),Headers},[],[]) of
+			{ok,Result} ->
+			    {ok,Result};
+			{error,Reason} ->
+			    error(Reason),
+			    {error,"Proxy error"}
+		    end;
+		_ ->
+		    {error,"Proxy method not supported error"}
 	    end;
+	    
 	{error,Actor,Why} ->
 	    error(Why),
 	    {error,forbidden}
     end.
 
-
-post_encode(Request) ->
-    Body = Request:recv_body(),
-    io:format("Proxied post body ~p~n",[Body]),
-    Body.
-    %list_to_binary(mochiweb_util:urlencode(rest_server:attributes(Request)).
-%%     Attributes = case Request:recv_body() of
-%%                          undefined ->
-%%                              [];
-%%                          Binary ->
-%%                              case get_primary_header_value("content-type") of
-%%                                  "application/x-www-form-urlencoded" ++ _ ->
-%%                                      mochiweb_util:parse_qs(Binary);
-%%                                  _ ->
-%%                                      []
-%%                              end
-%%                      end,
-%%     list_to_binary(string:join([K ++ "=" ++ V ||{K,V} <- Attributes],"&")).
 
 query_string(Request) ->
     {_, QueryString, _} = mochiweb_util:urlsplit_path(Request:get(raw_path)),
