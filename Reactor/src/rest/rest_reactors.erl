@@ -206,21 +206,23 @@ respond_to(Adaptor,retrieve,"_/search/" ++ Tokens,Credentials,Attributes,Request
 %%     end;
 
 respond_to(Adaptor,create,"_/id/",Credentials,Attributes,Request) ->
-    Domain = rest_helper:domain(Request),
-    Item = "_/id/" ++ attribute:today() ++ "_" ++ rest_helper:title(Attributes),
+    Domain = rest_helper:domain(Request) ++ ?IDENTITIES,
+    %Item = "_/id/" ++ attribute:today() ++ "_" ++ rest_helper:title(Attributes),
+    Item = "/" ++ attribute:today() ++ "_" ++ rest_helper:title(Attributes),
+    io:format("Domain,Item ~p~n",[{Domain,Item}]),
     case actor_server:new(Credentials,?MODULE,Domain,Item,Attributes) of
 	{ok,_Xref} -> 
-	    rest_helper:redirect(create,rest_helper:qres(Item,Request),Request,[]);
+	    rest_helper:redirect(create,?IDENTITIES ++ Item,Request,[]);
 	{error,Error} -> 
 	    rest_helper:error(Adaptor,retrieve,"_/id/",Request,Error);
 	{autherror,Why} ->
 	    rest_helper:forbidden("_/id/",Request,Why)
     end;
-
+%Todo this isn't tested at all yet.
 respond_to(Adaptor,delete,"_/id/" ++ Id,Credentials,Attributes,Request) ->
     case actor_server:remove(Credentials,?MODULE,rest_helper:qres("_/id/" ++ Id,Request)) of
 	{ok,_Xref} -> 
-	    rest_helper:redirect(create,rest_helper:qres("_/id/",Request),Request,[]);
+	    rest_helper:redirect(create,?IDENTITIES + "/",Request,[]);
 	{error,Error} -> 
 	    rest_helper:error(Adaptor,delete,"_/id/" ++ Id,Request,Error);
 	{autherror,Why} ->
@@ -236,10 +238,10 @@ respond_to(Adaptor,retrieve,"_/acl/",Credentials,Attributes,Request) ->
     rest_helper:error(Adaptor,retrieve,"_/acl/",Request,"Identity ACLs can not be listed remotely, it is an internal function only");
 
 respond_to(Adaptor,retrieve,"_/acl/" ++ Id,Credentials,Attributes,Request) ->
-    rest_helper:respond_to(Adaptor,retrieve,"_/id/" ++ Id ++ "/acl",Credentials,Attributes,Request);
+    respond_to(Adaptor,retrieve,"_/id/" ++ Id ++ "/acl",Credentials,Attributes,Request);
 
 respond_to(Adaptor,create,"_/acl/" ++ Id,Credentials,Attributes,Request) ->
-    rest_helper:respond_to(Adaptor,update,"_/acl/" ++ Id,Credentials,Attributes,Request);
+    respond_to(Adaptor,update,"_/acl/" ++ Id,Credentials,Attributes,Request);
 
 respond_to(Adaptor,update,"_/acl/" ++ Id,Credentials,Attributes,Request) ->
     % contains resource (Qitem, or use referer) being ACL'ed + controls

@@ -152,7 +152,8 @@ setup_domain(Domain,Email,Password,Token,Branches) ->
 			     {"title","Domain Queue Index"},
 			     {"status","fixed"},
 			     {"type","trunk"}]),
-    domain_server:create(Identities,identity,Founder), %% identity
+    % the matcher was identity, but I changed this to matcher as there isn't one (yet?). Policy may have overidden the need for an identity matcher, but if that changes we can set it here.
+    domain_server:create(Identities,matcher,Founder), %% identity
     %% Create Domain Root - redundant
 %%     attribute_server:create(Domain,"/",
 %% 			    [{"description","Welcome"},
@@ -176,6 +177,8 @@ setup_domain(Domain,Email,Password,Token,Branches) ->
     % Grant root permissions to founder and Identity controls
 %%     identity_server:controls(qualified(Identities,"/founder"),rel3,grant,
 %% 			     {qualified(Domain,"/") ,[ {"acl",?ALLPRIVS}] } ),
+    
+    %ToDo this direct call into an actor_server function is just plain bad practice fix it!
     actor_server:create_id_fork(Identities,"/founder",[{"title","Founder"}]),
     identity_server:controls(qualified(Identities,"/founder"),rel3,grant,
 			     {qualified(Identities,"/") ,[ {"acl",?ALLPRIVS}] } ),

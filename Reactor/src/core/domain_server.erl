@@ -212,8 +212,8 @@ load_matcher(Domain) ->
 	{error,{already_loaded,Matcher}} -> 
 		   start(Matcher),
 		   Matcher;
-	{error,_Why} -> 
-	    io:format("Matcher not loaded ~p~n",[Matcher]),
+	{error,Why} -> 
+	    error({"Matcher not loaded : " ++ atom_to_list(Matcher),Why}),
 	    ?ERRORMATCHER %flag an error?
     end.
 
@@ -221,8 +221,8 @@ start(Matcher) ->
     case application:start(Matcher) of
 	ok -> Matcher;
 	{error,{already_started,matcher}} -> Matcher;
-	{error,_Why} -> 
-	    io:format("Matcher not started ~p~n",[Matcher]),
+	{error,Why} -> 
+	    error({"Matcher not started : "  ++ atom_to_list(Matcher),Why}),
 	    ?ERRORMATCHER %flag an error?
     end.
 
@@ -231,10 +231,10 @@ unload_matcher({_Doman,Matcher}) ->
 	ok -> 
 	    case application:unload(Matcher) of
 		ok -> void;
-		_  -> io:fwrite("Could not unload : ~p~n",[Matcher])
+		{error,Why}  -> error({"Could not unload : " ++ atom_to_list(Matcher),Why})
 	    end;
-	_  ->
-	     io:fwrite("Could not stop : ~p~n",[Matcher])
+	{error,Why}  ->
+	    error({"Could not stop : "  ++ atom_to_list(Matcher), Why})
     end.
 
 error(Error) ->

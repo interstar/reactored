@@ -437,13 +437,13 @@ handle_call({domain,Credentials,Service,Domain,Url,Matcher}, _From, State) ->
 handle_call({identity,Credentials,Service,create,Domain,Item,Attributes}, _From, State) ->
     %% Note special case of authority based on parent ACL having 'create' control
     Parent = attribute:parent(Domain,Item),
-    Attribs = [{"parent",Parent}|Attributes],
+    Attribs = [{"groups",Parent}|Attributes], %groups = parent
     Reply = case identity_server:authorise(Credentials,Service,create,{Parent, Attributes}) of 
 		{ok,Actor} -> 
 		    case identity_server:create(Domain,Item,Attribs) of
 			{ok,Id} ->
-			    proplists:delete("password",Attribs),
-			    case attribute_server:create(Domain,Item,[{"identity",Id},{"type","identity"}] ++ Attribs) of
+			    Attribs1 = proplists:delete("password",Attribs),
+			    case attribute_server:create(Domain,Item,[{"identity",Id},{"type","identity"}] ++ Attribs1) of
 				{ok,Xref} ->
 				    pattern_server:process(Actor,Service,create,Domain,Item,[{"xref",Xref}|Attribs]),
 				    create_id_fork(Domain,Item,Attribs),

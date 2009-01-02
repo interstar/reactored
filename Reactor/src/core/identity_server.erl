@@ -167,7 +167,7 @@ handle_call({authorise,Credentials,Service,Command,Request}, _From, State) ->
     Reply = case check_access(Credentials,Service,Command,Request) of
 		{ok,Iuri}-> 
 		    {ok,Iuri};
-		{error,Iuri,Why} -> % Authosrisation failure
+		{error,Iuri,Why} -> % Authorisation failure
 		    {error,error({"could not authorise. " ++ Iuri}),Why}
 	    end,
     {reply, Reply, State};
