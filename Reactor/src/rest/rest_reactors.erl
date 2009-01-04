@@ -208,8 +208,18 @@ respond_to(Adaptor,retrieve,"_/search/" ++ Tokens,Credentials,Attributes,Request
 respond_to(Adaptor,create,"_/id/",Credentials,Attributes,Request) ->
     Domain = rest_helper:domain(Request) ++ ?IDENTITIES,
     %Item = "_/id/" ++ attribute:today() ++ "_" ++ rest_helper:title(Attributes),
-    Item = "/" ++ attribute:today() ++ "_" ++ rest_helper:title(Attributes),
-    io:format("Domain,Item ~p~n",[{Domain,Item}]),
+    Item = case rest_helper:title(Attributes) of
+		[] ->
+		  "/" ++ attribute:today();
+		Title ->
+		    case actor_server:lookup(Domain ++ "/" ++ Title) of
+			[] ->
+			    "/" ++ Title;
+			Qitem ->
+			    "/" ++ attribute:today() ++ "_" ++ Title
+		    end
+	    end,
+    %io:format("Domain,Item ~p~n",[{Domain,Item}]),
     case actor_server:new(Credentials,?MODULE,Domain,Item,Attributes) of
 	{ok,_Xref} -> 
 	    rest_helper:redirect(create,?IDENTITIES ++ Item,Request,[]);
@@ -222,7 +232,7 @@ respond_to(Adaptor,create,"_/id/",Credentials,Attributes,Request) ->
 respond_to(Adaptor,delete,"_/id/" ++ Id,Credentials,Attributes,Request) ->
     case actor_server:remove(Credentials,?MODULE,rest_helper:qres("_/id/" ++ Id,Request)) of
 	{ok,_Xref} -> 
-	    rest_helper:redirect(create,?IDENTITIES + "/",Request,[]);
+	    rest_helper:redirect(create,?IDENTITIES ++ "/",Request,[]);
 	{error,Error} -> 
 	    rest_helper:error(Adaptor,delete,"_/id/" ++ Id,Request,Error);
 	{autherror,Why} ->
@@ -238,43 +248,51 @@ respond_to(Adaptor,retrieve,"_/acl/",Credentials,Attributes,Request) ->
     rest_helper:error(Adaptor,retrieve,"_/acl/",Request,"Identity ACLs can not be listed remotely, it is an internal function only");
 
 respond_to(Adaptor,retrieve,"_/acl/" ++ Id,Credentials,Attributes,Request) ->
-    respond_to(Adaptor,retrieve,"_/id/" ++ Id ++ "/acl",Credentials,Attributes,Request);
+    respond_to(Adaptor,retrieve,?IDENTITIES ++ "/" ++ Id ++ "/acl",Credentials,Attributes,Request);
 
 respond_to(Adaptor,create,"_/acl/" ++ Id,Credentials,Attributes,Request) ->
     respond_to(Adaptor,update,"_/acl/" ++ Id,Credentials,Attributes,Request);
 
 respond_to(Adaptor,update,"_/acl/" ++ Id,Credentials,Attributes,Request) ->
+    %io:format("About to update ACL fork ~p~n",[{Id,Attributes}]),
     % contains resource (Qitem, or use referer) being ACL'ed + controls
     {Resource,Attrib} = case rest_helper:get_option("resource",Attributes) of
 		   {undefined,Attr} -> 
-		       {rest_helper:referer(Request),Attr};
-		   {Url,Attr} -> 
-		       {Url,Attr}
+				case actor_server:lookup(rest_helper:referer(Request)) of
+				    [] ->
+					{undefined,Attr};
+				    Qitem ->
+					{Qitem,Attr}
+				end;
+		   {Uri,Attr} -> % expects item uri ref not url!!
+		       {Uri,Attr}
 	       end,
     Acl = proplists:get_value("acl",Attrib),
+    Idurl = rest_helper:domain(Request) ++ ?IDENTITIES,
     case {Resource,Acl} of 
 	{undefined,_} -> 
 	    rest_helper:error(Adaptor,update,"_/acl/" ++ Id,Request,"Resource not provided for ACL Update");
 	{_,undefined} -> 
 	    rest_helper:error(Adaptor,update,"_/acl/" ++ Id,Request,"ACL not provided for ACL Update");
 	{_,_} ->
+	    %io:format("Updating ACL fork ~p~n",[{Resource,Acl,Attrib}]),
 	    Attribs = [{Resource,Acl}|Attrib],
 	    case rest_helper:get_option("control",Attribs) of
 		{"grant",Atts} -> 
-		    case actor_server:grant(Credentials,?MODULE,rest_helper:qres("_/id/" ++ Id,Request),Resource,Atts) of
+		    case actor_server:grant(Credentials,?MODULE,rest_helper:qualified(Idurl,"/" ++ Id),Resource,Atts) of
 			{ok,Iacl} ->
-			    actor_server:update(Credentials,?MODULE,rest_helper:qres("_/id/" ++ Id ++ "/acl",Request),rest_helper:repack_acl(Resource,Iacl,Atts)),
-			    rest_helper:redirect(update,rest_helper:qres("_/acl/" ++ Id,Request),Request,[]);
+			    actor_server:update(Credentials,?MODULE,rest_helper:qualified(Idurl,"/" ++ Id ++ "/acl"),rest_helper:repack_acl(Resource,Iacl,Atts)),
+			    rest_helper:redirect(update,?CONTEXT ++ ?IDENTITIES ++ "/" ++ Id ++ "/acl",Request,[]);
 			{error,Error} -> 
 			    rest_helper:error(Adaptor,update,"_/acl/" ++ Id,Request,Error);
 			{autherror,Why} ->
 			    rest_helper:forbidden(Resource,Request,Why)
 		    end;
 		{"revoke",Atts} ->
-		    case actor_server:revoke(Credentials,?MODULE,rest_helper:qres("_/id/" ++ Id,Request),Resource,Atts) of
+		    case actor_server:revoke(Credentials,?MODULE,rest_helper:qualified(Idurl,"/" ++ Id),Resource,Atts) of
 			{ok,Iacl} -> 
-			    actor_server:update(Credentials,?MODULE,rest_helper:qres("_/id/" ++ Id ++ "/acl",Request),rest_helper:repack_acl(Resource,Iacl,Atts)),
-			    rest_helper:redirect(update,rest_helper:qres("_/acl/" ++ Id,Request),Request,[]);
+			    actor_server:update(Credentials,?MODULE,rest_helper:qualified(Idurl,"/" ++ Id ++ "/acl"),rest_helper:repack_acl(Resource,Iacl,Atts)),
+			    rest_helper:redirect(update,?CONTEXT ++ ?IDENTITIES ++ "/" ++ Id ++ "/acl",Request,[]);
 			{error,Error} -> 
 			    rest_helper:error(Adaptor,update,"_/acl/" ++ Id,Request,Error);
 			{autherror,Why} ->

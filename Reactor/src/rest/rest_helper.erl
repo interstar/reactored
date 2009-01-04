@@ -30,7 +30,7 @@
 -include("system.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 -export([respond/2,error/5,redirect/4,unauthorised/2,forbidden/3]).
--export([a/1,qres/2,domain/1,attributes/2,safe_char_set/1,show_login_form/1,show_login_form/2,q/1,repack_acl/3,tag/5,html/1,split/1,item_to_url/1,title/1,safeUri/1,accepts/1,attributes_and_actor/2,credentials/1,cookie/3,cookie_options/2,save_session/2,remove_session/1,get_credentials/1,add_credentials/1,get_option/2]).
+-export([a/1,qres/2,domain/1,attributes/2,safe_char_set/1,show_login_form/1,show_login_form/2,q/1,repack_acl/3,tag/5,html/1,split/1,item_to_url/1,title/1,safeUri/1,accepts/1,attributes_and_actor/2,credentials/1,cookie/3,cookie_options/2,save_session/2,remove_session/1,get_credentials/1,add_credentials/1,get_option/2,qualified/2]).
 
 %% Response support functions
 respond(Request,{ContentType,Body}) ->
@@ -79,7 +79,7 @@ title(Attributes) ->
 
 safeUri(Title) -> 
 	{_,S,_} = regexp:gsub(Title,"[^a-zA-Z0-9\-_]+","_"),
-	S.
+	string:to_lower(S).
 
 accepts(Req) ->
     Req:get_header_value("Accept").
@@ -311,3 +311,5 @@ split(Url) ->
 item_to_url(Item) ->
     lists:flatten(string:tokens(Item,?DOMAINSEPERATOR)).
 
+qualified(Domain,Item) ->
+    attribute:item_id(Domain,Item).

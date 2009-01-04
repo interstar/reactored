@@ -179,7 +179,7 @@ setup_domain(Domain,Email,Password,Token,Branches) ->
 %% 			     {qualified(Domain,"/") ,[ {"acl",?ALLPRIVS}] } ),
     
     %ToDo this direct call into an actor_server function is just plain bad practice fix it!
-    actor_server:create_id_fork(Identities,"/founder",[{"title","Founder"}]),
+    actor_server:create_id_fork(Identities,"/founder",{"title","Founder"}),
     identity_server:controls(qualified(Identities,"/founder"),rel3,grant,
 			     {qualified(Identities,"/") ,[ {"acl",?ALLPRIVS}] } ),
     identity_server:controls(qualified(Identities,"/founder"),rel3,grant,

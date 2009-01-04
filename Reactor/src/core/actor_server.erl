@@ -445,8 +445,12 @@ handle_call({identity,Credentials,Service,create,Domain,Item,Attributes}, _From,
 			    Attribs1 = proplists:delete("password",Attribs),
 			    case attribute_server:create(Domain,Item,[{"identity",Id},{"type","identity"}] ++ Attribs1) of
 				{ok,Xref} ->
-				    pattern_server:process(Actor,Service,create,Domain,Item,[{"xref",Xref}|Attribs]),
-				    create_id_fork(Domain,Item,Attribs),
+				    pattern_server:process(Actor,Service,create,Domain,Item,[{"xref",Xref}|Attribs1]),
+				    Title = case proplists:get_value("title",Attribs1) of
+						undefined -> Item;
+						T -> T
+					    end,
+				    create_identity_fork(Service,Actor,Domain,Item,Title),
 				    {ok,Xref};
 				_ -> {error,Actor,error({"Could not create resource",Domain,Item,Attribs})}
 			    end; 
@@ -488,12 +492,7 @@ handle_call({Credentials,Service,create,Domain, Item, Attributes}, _From, State)
     Attribs = [{"groups",Parent}|Attributes],
     Reply = case identity_server:authorise(Credentials,Service,create,{Parent, Attributes}) of 
 		{ok,Actor} -> 
-		    case attribute_server:create(Domain,Item,[{"author",Actor}|Attribs]) of
-			{ok,Xref} ->
-			    pattern_server:process(Actor,Service,create,Domain,Item,[{"xref",Xref}|Attribs]),
-			    {ok,Xref};
-		    _ -> {error,error({"Could not create resource",Domain,Item,Attribs})}
-		    end;
+		    create_resource(Actor,Service,Domain,Item,Attribs);
 		{error,Actor,Why} ->
 		    pattern_server:process(Actor,Service,autherror,Domain,Item,[{"autherror",Why}|Attribs]),
 		    {autherror,Why}
@@ -702,6 +701,44 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+create_resource(Actor,Service,Domain,Item,Attribs) ->
+    case attribute_server:create(Domain,Item,[{"author",Actor}|Attribs]) of
+	{ok,Xref} ->
+	    pattern_server:process(Actor,Service,create,Domain,Item,[{"xref",Xref}|Attribs]),
+	    {ok,Xref};
+	_ -> {error,error({"Could not create resource",Domain,Item,Attribs})}
+    end.
+
+create_resource(Actor,Service,Domain,Item,Parent,Attribs) ->
+    create_resource(Actor,Service,Domain,Item,[{"groups",Parent}|Attribs]).
+create_identity_fork(Service,Actor,Domain,Item,Title) ->
+    Parent = qualified(Domain,Item),
+    ACL = Item ++ "/acl",
+    ACL_attribs = [{"type","acl"},{"title",Title ++ " ACL"}],
+    Tags = Item ++ "/tags",
+    Tags_attribs = [{"type","tag"},{"title",Title ++ " Tags"}],
+    Profile = Item ++ "/profile",
+    Profile_attribs = [{"type","profile"},{"title",Title ++ " Profile"}],
+    io:format("Creating identity fork ~p~n",[{Domain,Item,Title}]),
+    case create_resource(Actor,Service,Domain,ACL,Parent,ACL_attribs) of
+	{ok,_Xref0} ->
+	    io:format("Creating ACL fork ~p~n",[{Domain,ACL,ACL_attribs}]);
+	_ ->
+	    io:format("Error creating ACL fork ~p~n",[{Domain,ACL,ACL_attribs}])
+    end,
+    case create_resource(Actor,Service,Domain,Tags,Parent,Tags_attribs) of
+	{ok,_Xref1} ->
+	    io:format("Creating Tag fork ~p~n",[{Domain,Tags,Tags_attribs}]);
+	_ ->
+	    io:format("Error creating Tag fork ~p~n",[{Domain,Tags,Tags_attribs}])
+    end,
+    case create_resource(Actor,Service,Domain,Profile,Parent,Profile_attribs) of
+	{ok,_Xref2} ->
+	    io:format("Creating Tag fork ~p~n",[{Domain,Profile,Profile_attribs}]);
+	_ ->
+	    io:format("Error creating Tag fork ~p~n",[{Domain,Profile,Profile_attribs}])
+    end.
+
 listing_q(Actor,Service,Domain,Attributes) ->
     pattern_server:process(Actor,Service,q,Domain,Domain ++ "/",Attributes),
     identity_server:filter(q,Actor,Domain,Attributes).
@@ -742,15 +779,18 @@ echo_cred({uri,Uri}) ->
 echo_cred({token,Token}) ->
     " Using Token " ++ Token ++ "\n".
 
+create_id_fork(Domain,Item,{"title",Title}) ->
+    io:format("Creating if fork ~p~n",[{Domain,Item,Title}]),
+    attribute_server:create(Domain,Item ++ "/acl",[{"type","acl"},{"title",Title ++ " ACL"}]),
+    attribute_server:create(Domain,Item ++ "/tags",[{"type","tag"},{"title",Title ++ " Tags"}]),
+    attribute_server:create(Domain,Item ++ "/profile",[{"type","profile"},{"title",Title ++ " Profile"}]);
+
 create_id_fork(Domain,Item,Attribs) ->
     Title = case proplists:get_value("title",Attribs) of
 	      undefined -> "";
 	      T -> T
 	    end,
-    Atts = proplists:delete("title",Attribs),
-    attribute_server:create(Domain,Item ++ "/acl",[{"type","acl"},{"title",Title ++ " ACL"}] ++ Atts),
-    attribute_server:create(Domain,Item ++ "/tags",[{"type","tag"},{"title",Title ++ " Tags"}] ++ Atts),
-    attribute_server:create(Domain,Item ++ "/profile",[{"type","profile"},{"title",Title ++ " Profile"}] ++ Atts).
+    create_id_fork(Domain,Item,{"title",Title}).
 
 delete_id_fork(Item) ->
     attribute_server:delete(Item ++ "/acl"),
