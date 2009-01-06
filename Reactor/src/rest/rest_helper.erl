@@ -36,6 +36,13 @@
 respond(Request,{ContentType,Body}) ->
     Headers = [],
     Request:respond({200, [{"Content-Type", ContentType} | Headers], Body}).
+%application/atom+xml
+error(atom_adaptor,_Operation,Resource,Request,Error) ->
+    Request:respond(atom_adaptor:error());
+
+% To be enabled when error is written into all adaptors
+%error(Adaptor,_Operation,Resource,Request,Error) ->
+%    Request:respond(Adaptor:error());
 
 error(_Adaptor,_Operation,Resource,Request,Error) ->
     Request:respond({500, [], ?CONTEXT ++  Resource ++ "\n" ++ Error ++ "\n"}).

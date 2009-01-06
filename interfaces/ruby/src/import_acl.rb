@@ -2,10 +2,8 @@ require 'rexml/document'
 require 'reactor_util.rb'
 include REXML
 
-STOKEN = "1216079807158937" 
-URL = "http://127.0.0.1:8080"
-#STOKEN = "1216080767569823" 
-#URL = "http://awmb.local:8080"
+STOKEN = "1216080767569823" 
+URL = "http://awmb.local:8080"
 PATH = "./"
 
 def add_user(entry,reactor,domain)

@@ -22,16 +22,21 @@
 -include("schema.hrl").
 -include("system.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
+-define(ATOMERROR,"<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<feed><title>unknown</title></feed>\n").
+-define(TYPE,"application/atom+xml").
 -export([render/3]).
--export([xml/1,feed/3,pretty_print/1]).
+-export([xml/1,feed/3,pretty_print/1,error/0]).
 
 render(Title,Url,Item) when is_record(Item,item) ->
-    {"application/atom+xml",xml(feed(Title,Url,[Item]))};
+    {?TYPE,xml(feed(Title,Url,[Item]))};
 render(Title,Url,Items) when is_list(Items) andalso is_record(hd(Items),item) ->
-    {"application/atom+xml",xml(feed(Title,Url,Items))};
+    {?TYPE,xml(feed(Title,Url,Items))};
 render(Title,Url,Item) ->
-    {"text/html",xml(feed(Title,Url,Item))}.
+    {?TYPE,xml(feed(Title,Url,Item))}.
 %% Todo what when is not item, i.e. attribute/s
+
+error() ->
+    {404,[{"Content-Type", ?TYPE}], ?ATOMERROR}.
 
 pretty_print(Feed) ->
     io:format("~s~n",[lists:flatten(Feed)]).

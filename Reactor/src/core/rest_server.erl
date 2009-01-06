@@ -115,7 +115,10 @@ react_to(Method,?PUBLIC ++ Path,Req, DocRoot) ->
 	_ ->
 	    Req:respond({501, [], []})
     end;
-
+%% Logging out
+react_to('GET',?LOGOUT,Request,DocRoot) ->
+    rest_helper:remove_session(Request),
+    Request:respond({200, [{"Content-Type", "text/html"} | []], rest_helper:html("<h3>You are now logged out</h3><p><a href=\"/_login\">Login</a></p>")});
 %% Logging into REST interface
 %% Todo implement plain http login as an alternative to form based login
 react_to('GET',?LOGIN,Request,DocRoot) ->

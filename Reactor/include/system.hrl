@@ -34,6 +34,7 @@
 -define(DOCROOT,"www").
 -define(PUBLIC,"/_public/").
 -define(LOGIN,"/_login").
+-define(LOGOUT,"/_logout").
 -define(RESOURCES,"/_resources/").
 -define(CONTEXT,"/reactor/"). % TODO change this to -define(ITEMS,"/_items/").
 -define(SYSTEM,"_/queue/system").

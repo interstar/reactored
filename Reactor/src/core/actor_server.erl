@@ -31,7 +31,7 @@
 %% API
 -export([start_link/0]).
 -export([start/0,stop/0]).
--export([domain/3,domain/5]).
+-export([domain/3,domain/5,clear/3]).
 -export([new/5,remove/3]).
 -export([create/5,update/4,delete/3,delete/4,delete/5,retrieve/3,retrieve/4,retrieve/5,q/4,graph/5]).
 -export([search/4,tagged/4,profile/4,tag/5]).
@@ -42,7 +42,6 @@
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]). 
-
 -record(state, {}).
 
 %%====================================================================
@@ -89,6 +88,18 @@ domain(Credentials,Service,Url) ->
 %%--------------------------------------------------------------------
 domain(Credentials,Service,Domain,Url,Matcher) ->
     gen_server:call(?MODULE,{domain,Credentials,Service,Domain,Url,Matcher}).
+
+%%--------------------------------------------------------------------
+%% Function: domain(Credentials,Service,Domain) -> 
+%%                         {ok,Domains |
+%%                         {error, Error}
+%% Description: clears a domain of all but '/' items
+%%
+%% @spec domain(Credentials::credentials(),Service::string(),Domain::string()) ->
+%%      {ok,domains::proplist()} | {error, Error::string()}
+%%--------------------------------------------------------------------
+clear(Credentials,Service,Domain) ->
+    gen_server:call(?MODULE,{clear,Credentials,Service,Domain}).
 
 %%====================================================================
 %% Identity/Profile API
@@ -432,6 +443,22 @@ handle_call({domain,Credentials,Service,Domain,Url,Matcher}, _From, State) ->
 		end,
     {reply, Reply, State};
 
+handle_call({clear,Credentials,Service,Domain}, _From, State) ->
+    Reply = case identity_server:authorise(Credentials,Service,delete,{qualified(Domain,"/"),[]}) of
+		{ok,Actor} ->
+		    case listing_q(Actor,Service,Domain,[]) of
+			[] ->
+			    {error,error({"Could not clear domain, no items",Domain})};
+			Items ->
+			    %delete them all items from this domain except root
+			    {ok,[delete_filter(Credentials,Service,lists:reverse(Item#item.item)) || Item <- Items]}
+		    end;
+		{error,Actor,Why} ->
+		    pattern_server:process(Actor,Service,autherror,Domain,"/",[{"autherror",Why}]),
+		    {autherror,Why}
+		end,
+    {reply, Reply, State};
+
 %% Identity/Profile calls
 
 handle_call({identity,Credentials,Service,create,Domain,Item,Attributes}, _From, State) ->
@@ -515,18 +542,7 @@ handle_call({Credentials,Service,update,Qitem, Attributes}, _From, State) ->
     {reply, Reply, State};
 
 handle_call({Credentials,Service,delete,Qitem}, _From, State) ->
-    Reply = case identity_server:authorise(Credentials,Service,delete,{Qitem,[]}) of 
-		{ok,Actor} -> 
-		    case attribute_server:delete(Qitem) of
-			{ok,Xref} ->
-			    pattern_server:process(Actor,Service,delete,domain(Qitem),Qitem,[{"xref",Xref}]),
-			    {ok,Xref};
-			_ -> {error,error({"Could not delete resource",Qitem})}
-		    end;
-		{error,Actor,Why} ->
-		    pattern_server:process(Actor,Service,autherror,domain(Qitem),Qitem,[{"autherror",Why}]),
-		    {autherror,Why}
-		end,
+    Reply = delete_item(Credentials,Service,Qitem),
     {reply, Reply, State};
 
 
@@ -800,3 +816,24 @@ delete_id_fork(Item) ->
 
 domains_to_prop(Domains) ->
     lists:map(fun({D,M}) -> {D,atom_to_list(M)} end,Domains).
+
+    
+delete_filter(Credentials,Service,"/|" ++ Meti) ->
+    {ignore,lists:reverse("/|" ++ Meti)};
+
+delete_filter(Credentials,Service,Meti) ->
+    delete_item(Credentials,Service,lists:reverse(Meti)).
+
+delete_item(Credentials,Service,Qitem) ->
+    case identity_server:authorise(Credentials,Service,delete,{Qitem,[]}) of
+	{ok,Actor} -> 
+	    case attribute_server:delete(Qitem) of
+		{ok,Xref} ->
+		    pattern_server:process(Actor,Service,delete,domain(Qitem),Qitem,[{"xref",Xref}]),
+		    {ok,Xref};
+		_ -> {error,error({"Could not delete resource",Qitem})}
+	    end;
+	{error,Actor,Why} ->
+	    pattern_server:process(Actor,Service,autherror,domain(Qitem),Qitem,[{"autherror",Why}]),
+	    {autherror,Why}
+    end.
