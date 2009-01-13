@@ -18,44 +18,43 @@
 %%     http://www.Reactored.org/
 
 %%%-------------------------------------------------------------------
-%%% File    : config_server.erl
-%%% Author  : Alan Wood <awood@awmb.local>
+%%% File    : matcher_server.erl
+%%% Author  : Alan Wood <awood@alan-woods-macbook.local>
 %%% Description : 
 %%%
-%%% Created : 10 Dec 2008 by Alan Wood <awood@awmb.local>
+%%% Created : 21 May 2008 by Alan Wood <awood@alan-woods-macbook.local>
 %%%-------------------------------------------------------------------
--module(config_server).
--include("schema.hrl").
--include("system.hrl").
--define(SERVER,?MODULE).
--define(HTTP,http_client).
+-module(rubber_server).
 
 -behaviour(gen_server).
 
 %% API
--export([domain/0,home/0,path/1]).
--export([start_link/1]).
+-export([start_link/0,start/0,stop/0]).
+-export([match/6,intercept/5]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
+-record(state, {}).
+
 %%====================================================================
 %% API
 %%====================================================================
-domain() ->
-    gen_server:call(?MODULE,domain).
-home() ->
-    gen_server:call(?MODULE,home).
-path(Res) ->
-    gen_server:call(?MODULE,{path,Res}).
+match(Actor,Service,Command,Domain,Resource,Params) ->
+    gen_server:call(?MODULE,{match,Actor,Service,Command,Domain,Resource,Params}).
 
+intercept(Domain,Method,Path,Req,DocRoot) ->
+    gen_server:call(?MODULE,{intercept,Domain,Method,Path,Req,DocRoot}).
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link(Conf) ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [Conf], []).
+start() -> start_link().
+stop() -> gen_server:call(?MODULE,stop).
+
+start_link() ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 %%====================================================================
 %% gen_server callbacks
@@ -68,12 +67,10 @@ start_link(Conf) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([Conf]) ->
+init([]) ->
     io:format("~p starting~n",[?MODULE]),
-    %io:format("with config ~n~p~n",[Conf]),
-    config:load_domain(Conf),
-    % inets:start(httpc,[{profile,?HTTP}]),
-    {ok, Conf}.
+    rubber:start("ruby " ++ config_server:path(reactors) ++ "rubber.rb"),
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -84,28 +81,20 @@ init([Conf]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call(domain, _From, Conf) ->
-    Reply = Conf#config.domain,
-    {reply, Reply, Conf};
-handle_call(home, _From, Conf) ->
-    Reply = Conf#config.home,
-    {reply, Reply, Conf};
-handle_call({path,Res}, _From, Conf) ->
-    Home = Conf#config.home,
-    Reply = case Res of
-		docroot ->
-		    Home ++ ?DOCROOT ++ "/";
-		reactors ->
-		    Home ++ ?REACTORS ++ "/";
-		audit ->
-		    Home ++ ?AUDITFILE;
-		_ ->
-		    Home
-		end,
-    {reply, Reply, Conf};
-handle_call(_Request, _From, Conf) ->
+handle_call({match,Actor,Service,Command,Domain,Resource,Params}, _From, State) ->
+    %% Split to all, writes and read call matching actions
+    io:format("Rubber Matching ~s~n",[Resource]),
+    Reply = rubber:process(Actor,Service,Command,Domain,Resource,Params),
+    {reply, Reply, State};
+handle_call({intercept,Domain,Method,Path,Req,DocRoot}, _From, State) ->
+    io:format("Rubber intercepting ~s~n",[Path]),
+    Reply = rubber:intercept(Domain,Method,Path,Req,DocRoot),
+    {reply, Reply, State};
+handle_call(stop, _From, State) ->
+    {stop,normal,stopped, State};
+handle_call(_Request, _From, State) ->
     Reply = ok,
-    {reply, Reply, Conf}.
+    {reply, Reply, State}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
@@ -113,8 +102,8 @@ handle_call(_Request, _From, Conf) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast(_Msg, Conf) ->
-    {noreply, Conf}.
+handle_cast(_Msg, State) ->
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_info(Info, State) -> {noreply, State} |
@@ -122,8 +111,8 @@ handle_cast(_Msg, Conf) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
-handle_info(_Info, Conf) ->
-    {noreply, Conf}.
+handle_info(_Info, State) ->
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% Function: terminate(Reason, State) -> void()
@@ -132,16 +121,16 @@ handle_info(_Info, Conf) ->
 %% cleaning up. When it returns, the gen_server terminates with Reason.
 %% The return value is ignored.
 %%--------------------------------------------------------------------
-terminate(_Reason, _Conf) ->
-    % inets:stop(httpc, ?HTTP),
+terminate(_Reason, _State) ->
+    rubber:stop(),
     ok.
 
 %%--------------------------------------------------------------------
 %% Func: code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% Description: Convert process state when code is changed
 %%--------------------------------------------------------------------
-code_change(_OldVsn, Conf, _Extra) ->
-    {ok, Conf}.
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
 
 %%--------------------------------------------------------------------
 %%% Internal functions

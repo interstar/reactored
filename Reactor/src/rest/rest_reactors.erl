@@ -461,7 +461,40 @@ respond_to(Adaptor,update,Resource,Credentials,Attributes,Request) ->
     end;
 
 respond_to(Adaptor,delete,Resource,Credentials,Attributes,Request) ->
-    case actor_server:lookup(rest_helper:qres(Resource,Request)) of
+    case lists:last(Resource) of
+	$/ ->
+	    clear(Adaptor,Resource,Credentials,Attributes,Request);
+	_ ->
+	    delete(Adaptor,Resource,Credentials,Attributes,Request)
+    end;
+
+respond_to(_Adaptor,Operation,Resource,Credentials,Attributes,Request) ->
+    io:format("Resource not found ~s ~s~n",[atom_to_list(Operation),Resource]),
+    Request:not_found().
+    %Request:respond({501, [{"Content-Type", "plain/text"}], "Unrecognised request for " ++ ?CONTEXT ++ Resource}).
+
+% clear domain of contents
+clear(Adaptor,Resource,Credentials,Attributes,Request) ->
+    [_|Niamod] = lists:reverse(rest_helper:qres(Resource,Request)),
+    Domain = lists:reverse(Niamod),
+    case domain:retrieve(Domain) of
+	{atomic,[]} -> % Not a valid domain
+	    rest_helper:error(Adaptor,retrieve,Resource,Request,"Could not identify domain to be cleared " ++ Resource);
+	_ ->
+	    case actor_server:clear(Credentials,?MODULE,Domain) of
+		{ok,Items} -> 
+		    rest_helper:redirect(delete,attribute:parent(rest_helper:domain(Request),Resource),Request,[]);
+		{error,Error} -> 
+		    rest_helper:error(Adaptor,retrieve,Resource,Request,Error);
+		{autherror,Why} ->
+		    rest_helper:forbidden(Resource,Request,Why)
+	    end
+		
+    end.
+
+
+delete(Adaptor,Resource,Credentials,Attributes,Request) ->  
+  case actor_server:lookup(rest_helper:qres(Resource,Request)) of
 	[] ->
 	    rest_helper:error(Adaptor,retrieve,Resource,Request,"Could not identify resource to be deleted " ++ Resource);
 	Qitem ->
@@ -487,10 +520,5 @@ respond_to(Adaptor,delete,Resource,Credentials,Attributes,Request) ->
 			    rest_helper:forbidden(Resource,Request,Why)
 		    end
 	    end
-    end;
-
-respond_to(_Adaptor,Operation,Resource,Credentials,Attributes,Request) ->
-    io:format("Resource not found ~s ~s~n",[atom_to_list(Operation),Resource]),
-    Request:not_found().
-    %Request:respond({501, [{"Content-Type", "plain/text"}], "Unrecognised request for " ++ ?CONTEXT ++ Resource}).
+    end.
 

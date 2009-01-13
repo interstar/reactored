@@ -23,6 +23,7 @@
 {"src/domains/*", [debug_info, {outdir, "ebin"}, {i,"include"}]}.
 {"src/domains/matcher/*", [debug_info, {outdir, "ebin"}, {i,"include"}]}.
 {"src/domains/survey/*", [debug_info, {outdir, "ebin"}, {i,"include"}]}.
+{"src/domains/proxy/*", [debug_info, {outdir, "ebin"}, {i,"include"}]}. 
 {"src/sinks/*", [debug_info, {outdir, "ebin"}, {i,"include"}]}.
 {"src/sinks/audit/*", [debug_info, {outdir, "ebin"}, {i,"include"}]}.
 {"src/sinks/index/*", [debug_info, {outdir, "ebin"}, {i,"include"}]}.

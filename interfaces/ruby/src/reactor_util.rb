@@ -22,7 +22,12 @@ class Reactor
     attribs = attributes.any? ?  attributes[0].merge(basic) : basic
     url = url(resource)
     post(url,attribs)
-    end
+  end
+
+  def clear(domain)
+    url = url(domain + "/")
+    delete(url)
+  end
 
   def new_user(title,id,nickname,password)
     attribs = {:title => title, :email => id, :nick => nickname, :password => password}
@@ -54,6 +59,11 @@ class Reactor
     rescue Timeout::Error 
       puts "http request timed out, after #{TIMEOUT} seconds" 
     end 
+  end
+
+  def delete(url)
+    request = Net::HTTP::Delete.new(url.path,{TOKEN,@token}) 
+    react(url,request)
   end
 
   def post(url,attribs)

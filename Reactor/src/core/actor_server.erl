@@ -74,7 +74,6 @@
 %%      {ok,domains::proplist()} | {error, Error::string()}
 %%--------------------------------------------------------------------
 domain(Credentials,Service,Url) ->
-    io:format("Domains ~p~n",[actor_server]),
     gen_server:call(?MODULE,{domain,Credentials,Service,Url}).
 %%--------------------------------------------------------------------
 %% Function: domain(Credentials,Service,Domain,Url,Matcher) -> 

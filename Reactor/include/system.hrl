@@ -32,6 +32,7 @@
 % This is for administrative web functions, which can differ from the main REST server, the example here uses a domain only accessable locally on the system which is more secure. 
 -define(AUDITFILE,"audit.log").
 -define(DOCROOT,"www").
+-define(REACTORS,"reactors").
 -define(PUBLIC,"/_public/").
 -define(LOGIN,"/_login").
 -define(LOGOUT,"/_logout").
