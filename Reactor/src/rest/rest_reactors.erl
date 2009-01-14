@@ -105,7 +105,6 @@ respond_to(Adaptor,create,"_/",Credentials,Attributes,Request) ->
 	    end
     end;
 
-
 respond_to(_Adaptor,Operation,"_/echo/" ++ Resource,Credentials,Attributes,Request) ->
     %% these echo responses could be extended if we moved the service detector up higher and call react with the service as a param rather than using Module nside react calls, we would have to use a header or something instead of the _/echo/ url, In fact Service could also indicate API vs None API calls
     Response = case Operation of
@@ -458,6 +457,23 @@ respond_to(Adaptor,update,Resource,Credentials,Attributes,Request) ->
 	    rest_helper:error(Adaptor,retrieve,Resource,Request,Error);
 	{autherror,Why} ->
 	    rest_helper:forbidden(Resource,Request,Why)
+    end;
+
+respond_to(Adaptor,delete,?QUEUE ++ Resource,Credentials,Attributes,Request) ->
+    case lists:last(Resource) of
+	$/ ->
+	    Queue = config_server:domain() ++ ?CONTEXT ++ ?QUEUE ++ Resource,
+	    io:format("About to flush queues ~s~n",[Queue]),
+	    case actor_server:flush(Credentials,?MODULE,Queue) of
+		ok ->
+		    rest_helper:redirect(delete,attribute:parent(rest_helper:domain(Request),?QUEUE ++ Resource),Request,[]);
+		{error,Error} -> 
+		    rest_helper:error(Adaptor,retrieve,?QUEUE ++ Resource,Request,Error);
+		{autherror,Why} ->
+		    rest_helper:forbidden(?QUEUE ++ Resource,Request,Why)
+	    end;
+	_ ->
+	    rest_helper:error(Adaptor,delete,?QUEUE ++ Resource,Request,"Request Not supported")
     end;
 
 respond_to(Adaptor,delete,Resource,Credentials,Attributes,Request) ->

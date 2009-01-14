@@ -39,6 +39,7 @@
 %% Special functions reactor internal usage
 -export([create_id_fork/3]).
 -export([lookup/1]).
+-export([flush/3]).
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]). 
@@ -346,6 +347,8 @@ revoke(Credentials,Service,Iuri,Qitem,Attributes) ->
     gen_server:call(?MODULE,{Credentials,Service,revoke,Iuri,Qitem, Attributes}).
 lookup(Qitem) ->
     gen_server:call(?MODULE,{lookup,Qitem}).
+flush(Credentials,Service,Queue) ->
+    gen_server:call(?MODULE,{flush,Credentials,Service,Queue}).
 
 %%====================================================================
 %% End Public Reactor API
@@ -398,6 +401,18 @@ handle_call({lookup,Uri}, _From, State) ->
 	    end,
     {reply, Reply, State};
 
+% fushes system queue
+handle_call({flush,Credentials,Service,Queue}, _From, State) ->
+    [_|Q] = lists:reverse(Queue),
+    Reply = case identity_server:authorise(Credentials,Service,delete,{lists:reverse(Q) ++ "|/",[]}) of 
+		{ok,Actor} -> 
+		    sink_server:flush();
+		{error,Actor,Why} ->
+		    pattern_server:process(Actor,Service,autherror,[],Queue ++ "/",[{"autherror",Why}]),
+		    {autherror,Why}
+		end,
+    {reply, Reply, State};
+
 %% Echo REST service calls for testing
 handle_call({Credentials,echo,Command,Domain,Item,Attributes}, _From, State) ->
     Reply = "Echo service, REST call " ++ atom_to_list(Command) ++ "," ++ Domain ++ Item ++ echo_cred(Credentials) ++ attribute:params_to_string("|",Attributes) ++ "test",
@@ -447,7 +462,7 @@ handle_call({clear,Credentials,Service,Domain}, _From, State) ->
 		{ok,Actor} ->
 		    case listing_q(Actor,Service,Domain,[]) of
 			[] ->
-			    {error,error({"Could not clear domain, no items",Domain})};
+			    {error,error({"Could not clear domain, no items ",Domain})};
 			Items ->
 			    %delete them all items from this domain except root
 			    {ok,[delete_filter(Credentials,Service,lists:reverse(Item#item.item)) || Item <- Items]}
@@ -828,6 +843,7 @@ delete_item(Credentials,Service,Qitem) ->
 	{ok,Actor} -> 
 	    case attribute_server:delete(Qitem) of
 		{ok,Xref} ->
+		    clean_up_removal(Xref),
 		    pattern_server:process(Actor,Service,delete,domain(Qitem),Qitem,[{"xref",Xref}]),
 		    {ok,Xref};
 		_ -> {error,error({"Could not delete resource",Qitem})}
@@ -836,3 +852,8 @@ delete_item(Credentials,Service,Qitem) ->
 	    pattern_server:process(Actor,Service,autherror,domain(Qitem),Qitem,[{"autherror",Why}]),
 	    {autherror,Why}
     end.
+
+clean_up_removal(Xref) ->
+    search_util:delete(Xref),
+    tag_util:delete(Xref), 
+    control_util:delete(location,Xref).

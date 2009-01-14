@@ -31,7 +31,7 @@
 
 %% API
 -export([start_link/1,start/1,stop/0]).
--export([nudge/1,fetch/0]).
+-export([flush/0,nudge/1,fetch/0]).
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
@@ -44,6 +44,8 @@
 start(Domain) -> start_link(Domain).
 stop() -> gen_server:call(?MODULE,stop).
 
+flush() ->
+    gen_server:cast(?MODULE,flush).
 nudge(Queue) ->
     gen_server:cast(?MODULE,{nudge,Queue}).
 fetch() ->
@@ -94,6 +96,9 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
+handle_cast(flush, Queues) ->
+    monostable:trigger([]), % Trigger monostable for fetch
+    {noreply, Queues};
 handle_cast({nudge,Queue}, Queues) ->
     add_queue(Queue,Queues),
     monostable:trigger([]), % Trigger monostable for fetch

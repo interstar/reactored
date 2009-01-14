@@ -111,9 +111,7 @@ handle_call({sink,Action}, _From, State) ->
 		     reindex_domain(Action#item.description);
 		 "delete" -> 
 		     %% need to make sure we differentiate attribute deletion/update from item deletions.
-		     search_util:delete(Action#item.xref),
-		     tag_util:delete(Action#item.xref), 
-		     control_util:delete(Action#item.xref);
+		     ok;
 		 "create" -> 
 		     search_util:index(Action#item.xref,Action#item.description);
 		 "update" ->
