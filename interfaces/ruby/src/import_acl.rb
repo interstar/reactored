@@ -9,19 +9,19 @@ PATH = "./"
 def add_user(entry,reactor,domain)
   id = entry.attributes["id"]
   nick = entry.attributes["nick"]
-  title = entry.attributes["title"]
+  uri = entry.attributes["uri"]
   password = entry.attributes["password"]
-  puts title  + " id:" + id + ",nick:" + nick
-  #reactor.new_user(title,id,nick,password) 
+  puts uri  + " id:" + id + ",nick:" + nick
+  #reactor.new_user(uri,id,nick,password) 
 end
 
 def add_acl(entry,reactor,domain)
   type = entry.attributes["type"]
-  user = entry.attributes["user"]
+  uri = entry.attributes["uri"]
   item = entry.attributes["item"]
   privelages = entry.attributes["privelages"]
-  puts type +  "  " + user+ " " + privelages + " on " + item
-  #reactor.grant(user,privelages.split(","),domain + item)
+  puts type +  "  " + uri + " " + privelages + " on " + item
+  #reactor.grant(uri,privelages.split(","),domain + item)
 end
 
 reactor = Reactor.new(URL,"reactor",STOKEN)

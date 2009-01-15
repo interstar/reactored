@@ -168,7 +168,7 @@ handle_call({authorise,Credentials,Service,Command,Request}, _From, State) ->
 		{ok,Iuri}-> 
 		    {ok,Iuri};
 		{error,Iuri,Why} -> % Authorisation failure
-		    {error,error({"could not authorise. " ++ Iuri}),Why}
+		    {error,Iuri,Why}
 	    end,
     {reply, Reply, State};
 

@@ -35,10 +35,9 @@ write(_Actor,_Service,_Command,_Domain,_Resource,_Params) ->
 	   {nomatch}.
 
 intercept(Domain,Method,Path,Request,Actor,Proxy) ->
-    %{ok,"Default Interceptor, nothing to see move along now."}
     case identity_server:authorise({uri,Actor},proxy,retrieve,{Domain ++ ?DOMAINSEPERATOR ++ "/",[]}) of 
-	{ok,_} -> 
-	    pattern_server:process(Actor,proxy,proxy,[],Domain,[]),
+	{ok,_Actor} -> 
+	    pattern_server:process(Actor,proxy,retrieve,[],Domain,[]),
 	    Dom = case string:tokens(Domain,"/") of
 		      [] -> 
 			  "";

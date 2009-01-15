@@ -404,7 +404,7 @@ handle_call({lookup,Uri}, _From, State) ->
 % fushes system queue
 handle_call({flush,Credentials,Service,Queue}, _From, State) ->
     [_|Q] = lists:reverse(Queue),
-    Reply = case identity_server:authorise(Credentials,Service,delete,{lists:reverse(Q) ++ "|/",[]}) of 
+    Reply = case identity_server:authorise(Credentials,Service,delete,{lists:reverse(Q) ++ ?DOMAINSEPERATOR ++ "/",[]}) of 
 		{ok,Actor} -> 
 		    sink_server:flush();
 		{error,Actor,Why} ->
