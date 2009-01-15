@@ -8,6 +8,7 @@ TOKEN = "security-token"
 Microecs_per_day = 24 * 60 * 60 * 1000000
 IDENTITIES = "_/id/"
 ACL = "_/acl/"
+QUEUE = "_/queue"
 
 class Reactor
   def initialize(host,context,token)
@@ -26,6 +27,11 @@ class Reactor
 
   def clear(domain)
     url = url(domain + "/")
+    delete(url)
+  end
+
+  def flush(queue = QUEUE)
+    url = url(queue + "/")
     delete(url)
   end
 
