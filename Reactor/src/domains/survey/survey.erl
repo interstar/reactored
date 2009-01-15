@@ -40,7 +40,7 @@ append(Actor,_Service,create,_Domain,_Resource,Params) ->
 	   {nomatch};
 	Fields ->
 	    {_,Xref} = proplists:lookup("xref",Params),
-	    Data = [{"title", config_server:path(docroot) ++ tl(?RESOURCES) ++ "survey/survey.csv"},
+	    Data = [{"title", config_server:path(docroot) ++ tl(?RESOURCES) ++ "surveys/survey.csv"},
 		    {"description",lists:flatten(item:iso_8601_fmt({date(),time()})) ++ "," ++ string:join(Fields,",")},
 		    {"author",Actor},
 		    {"type","append"},
