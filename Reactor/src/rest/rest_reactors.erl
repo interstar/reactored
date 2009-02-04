@@ -450,13 +450,18 @@ respond_to(Adaptor,create,Resource,Credentials,Attributes,Request) ->
     end;
 
 respond_to(Adaptor,update,Resource,Credentials,Attributes,Request) ->
-    case actor_server:update(Credentials,?MODULE,rest_helper:qres(Resource,Request), Attributes) of
-	{ok,_Xref} -> 
-	    respond_to(Adaptor,retrieve,Resource,Credentials,Attributes,Request);
-	{error,Error} -> 
-	    rest_helper:error(Adaptor,retrieve,Resource,Request,Error);
-	{autherror,Why} ->
-	    rest_helper:forbidden(Resource,Request,Why)
+    case actor_server:lookup(rest_helper:qres(Resource,Request)) of
+	[] ->
+	    rest_helper:error(Adaptor,create,Resource,Request,"Cannot update unknown resource " ++ Resource);
+	Qitem ->
+	    case actor_server:update(Credentials,?MODULE,Qitem, Attributes) of
+		{ok,_Xref} -> 
+		    respond_to(Adaptor,retrieve,Resource,Credentials,Attributes,Request);
+		{error,Error} -> 
+		    rest_helper:error(Adaptor,retrieve,Resource,Request,Error);
+		{autherror,Why} ->
+		    rest_helper:forbidden(Resource,Request,Why)
+	    end
     end;
 
 respond_to(Adaptor,delete,?QUEUE ++ Resource,Credentials,Attributes,Request) ->
