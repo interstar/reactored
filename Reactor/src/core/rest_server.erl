@@ -237,7 +237,7 @@ react_to('HEAD',Url,Request) ->
 react_to('GET',Url,Request) -> 
     case rest_helper:split(Url) of
 	{Resource,Ext} ->
-	    {Attributes,Credentials} = rest_helper:attributes_and_actor(Request,'POST'),
+	    {Attributes,Credentials} = rest_helper:attributes_and_actor(Request,'GET'),
 	    rest_reactors:respond_to(adaptor(Ext,rest_helper:accepts(Request)),retrieve,Resource,Credentials,Attributes,Request);
 	_ ->
 	    rest_helper:error(html_adaptor,'HEAD',Url,Request,"Illegal resource request")

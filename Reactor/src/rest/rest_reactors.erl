@@ -455,8 +455,20 @@ respond_to(Adaptor,update,Resource,Credentials,Attributes,Request) ->
 	    rest_helper:error(Adaptor,create,Resource,Request,"Cannot update unknown resource " ++ Resource);
 	Qitem ->
 	    case actor_server:update(Credentials,?MODULE,Qitem, Attributes) of
-		{ok,_Xref} -> 
-		    respond_to(Adaptor,retrieve,Resource,Credentials,Attributes,Request);
+		{ok,Xref} ->
+		    case actor_server:retrieve(Credentials,?MODULE,Qitem) of
+			{error,Error} -> 
+			    rest_helper:error(Adaptor,retrieve,Resource,Request,Error);
+			{autherror,Why} ->
+			    rest_helper:forbidden(Resource,Request,Why);
+			{ok,Attrib} ->
+			    Domain = rest_helper:domain(Request),
+			    Url = Domain ++ Resource,
+			    Title = "Resource " ++ Resource,
+			    Response = Adaptor:render(Title,Url,Attrib),
+			    rest_helper:respond(Request,Response)
+		    end;
+		    %respond_to(Adaptor,retrieve,Resource,Credentials,Attributes,Request);
 		{error,Error} -> 
 		    rest_helper:error(Adaptor,retrieve,Resource,Request,Error);
 		{autherror,Why} ->

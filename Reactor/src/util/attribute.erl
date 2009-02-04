@@ -271,8 +271,8 @@ graph(Domain,Uri,[{"related","all"}]) ->
     end,
     mnesia:transaction(F);
 %% Useless as is
-graph(Domain,Uri,[{"status",Status}]) -> 
-    % childrren of Uri status = status
+graph(Domain,Uri,[{"status",Status}]) ->
+    % children of Uri status = status
     Item = item_id(Domain,Uri),
     F = fun() -> 
 		lists:sort(lists:foldl(fun(I,Acc) -> children(Item,{status,Status},I,Acc) end,[],qlc:e(items(Domain))))
@@ -418,8 +418,7 @@ children(Uri,{Iuri,Item},Items) ->
 	    Items
     end.
 
-%% Todo need to test this record pattern matching usage!
-children(Uri,{status,Status},{Iuri,#item{status=Status} = Item},Items) ->
+children(Uri,{status,Status},{Iuri,Item = #item{status=[Status]}},Items) ->
     case string:str(Iuri,Uri) of
 	1 -> 
 	    [{child,Item} | Items]; % child of item
