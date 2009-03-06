@@ -207,19 +207,27 @@ respond_to(Adaptor,retrieve,"_/search/" ++ Tokens,Credentials,Attributes,Request
 respond_to(Adaptor,create,"_/id/",Credentials,Attributes,Request) ->
     Domain = rest_helper:domain(Request) ++ ?IDENTITIES,
     %Item = "_/id/" ++ attribute:today() ++ "_" ++ rest_helper:title(Attributes),
-    Item = case rest_helper:title(Attributes) of
-		[] ->
-		  "/" ++ attribute:today();
-		Title ->
-		    case actor_server:lookup(Domain ++ "/" ++ Title) of
-			[] ->
-			    "/" ++ Title;
-			Qitem ->
-			    "/" ++ attribute:today() ++ "_" ++ Title
-		    end
-	    end,
+    
+    {Item,Atts} = case  rest_helper:get_option("uri", Attributes) of
+		{undefined,Attribs} ->
+		   case rest_helper:title(Attributes) of
+		       [] ->
+			   {"/" ++ attribute:today(),Attribs};
+		       Title ->
+			   case actor_server:lookup(Domain ++ "/" ++ Title) of
+			       [] ->
+				   {"/" ++ Title,Attribs};
+			       Qitem ->
+				   {"/" ++ attribute:today() ++ "_" ++ Title,Attribs}
+			   end
+		   end;
+	       {[],Attribs} -> {"/" ++ attribute:today(),Attribs};
+	       {"null",Attribs} -> {"/" ++ attribute:today(),Attribs};
+	       {Uri,Attribs} ->
+		   {"/" ++ Uri,Attribs}
+	   end,
     %io:format("Domain,Item ~p~n",[{Domain,Item}]),
-    case actor_server:new(Credentials,?MODULE,Domain,Item,Attributes) of
+    case actor_server:new(Credentials,?MODULE,Domain,Item,Atts) of
 	{ok,_Xref} -> 
 	    rest_helper:redirect(create,?IDENTITIES ++ Item,Request,[]);
 	{error,Error} -> 
@@ -281,7 +289,7 @@ respond_to(Adaptor,update,"_/acl/" ++ Id,Credentials,Attributes,Request) ->
 		    case actor_server:grant(Credentials,?MODULE,rest_helper:qualified(Idurl,"/" ++ Id),Resource,Atts) of
 			{ok,Iacl} ->
 			    actor_server:update(Credentials,?MODULE,rest_helper:qualified(Idurl,"/" ++ Id ++ "/acl"),rest_helper:repack_acl(Resource,Iacl,Atts)),
-			    rest_helper:redirect(update,?CONTEXT ++ ?IDENTITIES ++ "/" ++ Id ++ "/acl",Request,[]);
+			    rest_helper:redirect(update,?IDENTITIES ++ "/" ++ Id ++ "/acl",Request,[]);
 			{error,Error} -> 
 			    rest_helper:error(Adaptor,update,"_/acl/" ++ Id,Request,Error);
 			{autherror,Why} ->
