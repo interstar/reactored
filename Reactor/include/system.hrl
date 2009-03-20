@@ -33,6 +33,7 @@
 -define(AUDITFILE,"audit.log").
 -define(DOCROOT,"www").
 -define(REACTORS,"reactors").
+-define(TEMP,"temp").
 -define(PUBLIC,"/_public/").
 -define(LOGIN,"/_login").
 -define(LOGOUT,"/_logout").

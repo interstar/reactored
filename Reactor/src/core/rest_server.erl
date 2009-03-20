@@ -149,10 +149,67 @@ react_to('POST',?LOGIN,Request,DocRoot) ->
 	    rest_helper:show_login_form(Request,Error)
     end; 
 
-
 %% Reactor Resource dispatcher
 react_to(Method,?RESOURCES,Request, DocRoot) ->
     Request:respond({501, [], []});
+
+react_to('POST',?RESOURCES ++ Path,Request, DocRoot) ->
+    Credentials = rest_helper:credentials(Request),
+    case lists:last(Path) of
+	$/ ->
+	    R = case string:tokens(Path, "/") of
+			   [_] ->
+			       Path;
+			   R1 -> 
+			       string:join(R1,"/")
+		       end,
+	    case actor_server:lookup(rest_helper:qres(R,Request)) of
+		[] ->
+		    rest_helper:error(html_adaptor,create,Path,Request,"Cannot create Upload resource as child of unknown resource/domain " ++ R);
+		Qitem ->
+		    case identity_server:authorise(Credentials,rest_server,create,{Qitem,[]}) of 
+			{ok,_Actor} ->
+			    case upload:store(Path,Request) of
+				{ok,File,Title,Link,Type} ->
+				    io:format("Uploaded ~s~n",[File]),
+
+				    [Domain,Res] = string:tokens(Qitem,?DOMAINSEPERATOR),
+				    R2 = case Res of 
+					     "/" ->
+						 Res;
+					     _ ->
+						 Res ++ "/"
+					 end,
+				    Item = R2 ++ "upload_" ++ attribute:today(),
+				    Attributes = [{"title",Title},{"description",rest_helper:link(Title,"/" ++ Link) ++ " uploaded resource "},{"type",rest_helper:safeUri(Type)}],
+				    case actor_server:create(Credentials,?MODULE,Domain,Item,Attributes) of
+					{ok,_Xref} ->
+					    Request:respond({200,[{"Content-Type","text/html"}],rest_helper:html("<h1>File uploaded</h1>")});
+					{autherror,Why} ->
+					    error({"Authentication Error adding upload",Why,Title}),
+					    rest_helper:forbidden(html_adaptor,'POST',?RESOURCES ++ Path,Request,"<h1>Sorry but you do not have access privelages to upload here</h1>");
+					{error,Error} ->
+					    error({"Error adding upload message",Error,Title}),
+					    rest_helper:error(html_adaptor,'POST',?RESOURCES ++ Path,Request,"<h1>Sorry an error occured uploading your file</h1>")
+				    end;    
+			    {error,Error,Resp} ->
+				error({"Uploading error",Error,Resp}),
+				rest_helper:error(html_adaptor,'POST',?RESOURCES ++ Path,Request,"<h1>Sorry an error occured uploading your file</h1>");
+			    _ -> 
+				error({"Upload failure",Path}),
+				rest_helper:error(html_adaptor,'POST',?RESOURCES ++ Path,Request,"<h1>Sorry an error occured uploading your file</h1>")
+			    end;
+			{error,Actor,Why} ->
+			    error(Why),
+			    rest_helper:forbidden(?RESOURCES ++ Path,Request,"You do not have the access privelages to upload to this resource")
+		    end
+		end;
+	_ ->
+	    error({"Upload failure cannot upload to Resource ",Path}),
+	    rest_helper:error(html_adaptor,'POST',?RESOURCES ++ Path,Request,"<h1>Sorry an error occured uploading your file</h1>")
+    end;
+
+
 react_to(Method,?RESOURCES ++ Path,Request, DocRoot) ->
     [Dom|Resource] = string:tokens(Path,"/"),
     Domain = rest_helper:qres(Dom,Request),
@@ -174,14 +231,6 @@ react_to(Method,?RESOURCES ++ Path,Request, DocRoot) ->
 				    rest_helper:forbidden(Resource,Request,"You do not have the access privelages to retrieve this resource")
 			    end
 			    
-		    end;
-		'POST' ->
-		    case Path of
-			_ ->
-						%ToDo this must move teh temp file to ?RESOURCES sub dir and domain hierarchy
-			    Res = upload:store(Request),
-			    io:format("Upload response ~p~n",[Res]),
-			    Request:respond({200,[{"Content-Type","text/html"}],rest_helper:html("<h1>uploaded</h1>")})
 		    end;
 		_ ->
 		    Request:respond({501, [], []})

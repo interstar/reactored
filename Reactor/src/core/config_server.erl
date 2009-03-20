@@ -99,6 +99,8 @@ handle_call({path,Res}, _From, Conf) ->
 		    Home ++ ?REACTORS ++ "/";
 		audit ->
 		    Home ++ ?AUDITFILE;
+		temp ->
+		    Home ++ ?TEMP ++ "/"; 
 		_ ->
 		    Home
 		end,

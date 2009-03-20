@@ -32,4 +32,3 @@ puts "Adding users : \n"
 temp = root.each_element('//user') {|entry| add_user(entry,reactor,domain)}
 puts "updating acls : \n" 
 temp = root.each_element('//acl') {|entry| add_acl(entry,reactor,domain)}
-
