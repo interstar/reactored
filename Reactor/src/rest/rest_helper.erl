@@ -115,21 +115,29 @@ attributes_and_actor(Request,Method) ->
 credentials(Request) ->
     case Request:get_cookie_value(?COOKIE) of
 	undefined -> 
-	    case Request:get_header_value("security-token") of
-		undefined ->
-		    Attributes = attributes(Request:get(method),Request),
-		    case proplists:get_value("token",Attributes) of
-			undefined ->
-			    {annonymous};
-			UrlToken ->
-			    io:format("Token ~s~n",[UrlToken]),
-			    {token,UrlToken}
-		    end;
-		Token ->
-		    {token,Token}
-	    end;
+	    get_token(Request);
 	UserId -> 
-	    get_credentials(UserId)
+	    case get_credentials(UserId) of
+		{annonymous} ->
+		  get_token(Request);
+		Credentials ->
+		    Credentials
+	    end
+    end.
+
+get_token(Request) ->
+    case Request:get_header_value("security-token") of
+	undefined ->
+	    Attributes = attributes(Request:get(method),Request),
+	    case proplists:get_value("token",Attributes) of
+		undefined ->
+		    {annonymous};
+		UrlToken ->
+		    io:format("Token ~s~n",[UrlToken]),
+		    {token,UrlToken}
+	    end;
+	Token ->
+	    {token,Token}
     end.
 
 
