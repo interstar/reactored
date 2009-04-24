@@ -170,7 +170,7 @@ react_to('POST',?RESOURCES ++ Path,Request, DocRoot) ->
 		    case identity_server:authorise(Credentials,rest_server,create,{Qitem,[]}) of 
 			{ok,_Actor} ->
 			    case upload:store(Path,Request) of
-				{ok,File,Title,Link,Type} ->
+				{ok,File,Title,Link,Type,Filename} ->
 				    io:format("Uploaded ~s~n",[File]),
 
 				    [Domain,Res] = string:tokens(Qitem,?DOMAINSEPERATOR),
@@ -181,7 +181,17 @@ react_to('POST',?RESOURCES ++ Path,Request, DocRoot) ->
 						 Res ++ "/"
 					 end,
 				    Item = R2 ++ "upload_" ++ attribute:today(),
-				    Attributes = [{"title",Title},{"description",rest_helper:link(Title,"/" ++ Link) ++ " uploaded resource "},{"type",rest_helper:safeUri(Type)}],
+				    Title1 = case Title of
+						 undefined -> 
+						     Filename;
+						 "?" ->
+						     Filename;
+						 "" ->
+						     Filename;
+						 _ ->
+						     Title
+					     end,    
+				    Attributes = [{"title",Title1},{"description",rest_helper:link(Title1,"/" ++ Link) ++ " uploaded resource "},{"type",rest_helper:safeUri(Type)}],
 				    case actor_server:create(Credentials,?MODULE,Domain,Item,Attributes) of
 					{ok,_Xref} ->
 					    Request:respond({200,[{"Content-Type","text/html"}],rest_helper:html("<h1>File uploaded</h1>")});

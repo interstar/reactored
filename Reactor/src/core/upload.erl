@@ -27,7 +27,7 @@ move_upload(Filename,Path,Temp,ContentType,Title) ->
 	    case file:rename(Temp, Dest) of
 		ok -> 
 		    {Type,_} = ContentType,
-		    {ok,Dest,Title,Dest -- config_server:path(docroot),Type};
+		    {ok,Dest,Title,Dest -- config_server:path(docroot),Type,Filename};
 		{error,Error} -> 
 		    {error, "File upload internal transfer failed : " ++ Dest ++ ", Error : " ++ atom_to_list(Error)}
 	    end;
