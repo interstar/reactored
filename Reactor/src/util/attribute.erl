@@ -267,7 +267,7 @@ q(Domain, qExp, Options) -> {error,"Not Implemented"}.
 graph(Domain,Uri,[{"related","all"}]) ->
     Item = item_id(Domain,Uri),
     F = fun() -> 
-		lists:sort(lists:foldl(fun(I,Acc) -> related(Item,I,Acc) end,[],qlc:e(items(Domain))))
+		lists:sort(fun({_,A},{_,B}) -> A#item.modified >= B#item.modified end,lists:foldl(fun(I,Acc) -> related(Item,I,Acc) end,[],qlc:e(items(Domain))))
     end,
     mnesia:transaction(F);
 %% Useless as is
@@ -275,7 +275,7 @@ graph(Domain,Uri,[{"status",Status}]) ->
     % children of Uri status = status
     Item = item_id(Domain,Uri),
     F = fun() -> 
-		lists:sort(lists:foldl(fun(I,Acc) -> children(Item,{status,Status},I,Acc) end,[],qlc:e(items(Domain))))
+		lists:sort(fun({_,A},{_,B}) -> A#item.modified >= B#item.modified end,lists:foldl(fun(I,Acc) -> children(Item,{status,Status},I,Acc) end,[],qlc:e(items(Domain))))
     end,
     mnesia:transaction(F);
 graph(Domain,Uri,[{"from",From}]) -> 
@@ -283,7 +283,7 @@ graph(Domain,Uri,[{"from",From}]) ->
     After = date_to_integer(From),
     Item = item_id(Domain,Uri),
     F = fun() -> 
-		lists:sort(lists:foldl(fun(I,Acc) -> children(Item,{modified,After},I,Acc) end,[],qlc:e(items(Domain))))
+		lists:sort(fun({_,A},{_,B}) -> A#item.modified >= B#item.modified end,lists:foldl(fun(I,Acc) -> children(Item,{modified,After},I,Acc) end,[],qlc:e(items(Domain))))
     end,
     mnesia:transaction(F);
 graph(Domain,Uri,[{"from",From},{"to",To}]) -> 
@@ -292,14 +292,14 @@ graph(Domain,Uri,[{"from",From},{"to",To}]) ->
     Before = date_to_integer(To),
     Item = item_id(Domain,Uri),
     F = fun() -> 
-		lists:sort(lists:foldl(fun(I,Acc) -> children(Item,{modified,Before,After},I,Acc) end,[],qlc:e(items(Domain))))
+		lists:sort(fun({_,A},{_,B}) -> A#item.modified >= B#item.modified end,lists:foldl(fun(I,Acc) -> children(Item,{modified,Before,After},I,Acc) end,[],qlc:e(items(Domain))))
     end,
     mnesia:transaction(F);
 graph(Domain,Uri,[]) -> 
     % all children of uri
     Item = item_id(Domain,Uri),
     F = fun() -> 
-		lists:sort(lists:foldl(fun(I,Acc) -> children(Item,I,Acc) end,[],qlc:e(items(Domain))))
+		lists:sort(fun({_,A},{_,B}) -> A#item.modified >= B#item.modified end,lists:foldl(fun(I,Acc) -> children(Item,I,Acc) end,[],qlc:e(items(Domain))))
     end,
     mnesia:transaction(F);
 graph(Domain,Uri,Attributes) -> 

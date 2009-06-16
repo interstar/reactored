@@ -191,7 +191,7 @@ react_to('POST',?RESOURCES ++ Path,Request, DocRoot) ->
 						 _ ->
 						     Title
 					     end,    
-				    Attributes = [{"title",Title1},{"description",rest_helper:link(Title1,"/" ++ Link) ++ " uploaded resource "},{"type",rest_helper:safeUri(Type)}],
+				    Attributes = [{"title",Title1},{"description",rest_helper:link(Title1,"/" ++ Link,"_blank") ++ " uploaded resource "},{"type",rest_helper:safeUri(Type)}],
 				    case actor_server:create(Credentials,?MODULE,Domain,Item,Attributes) of
 					{ok,_Xref} ->
 					    Request:respond({200,[{"Content-Type","text/html"}],rest_helper:html("<h1>File uploaded</h1>")});
