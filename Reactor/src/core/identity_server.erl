@@ -101,9 +101,11 @@ handle_call({authenticate,Id,Pswd}, _From, State) ->
     Reply = case apply(identity_adaptor(),authenticate,[Id,Pswd]) of
 	{ok,Actor} -> 
 		    {ok,Actor};
-	Bad -> 
+	{error,Bad} -> 
 	    % Identity module error/ not loaded?
-	    {error,error({"Identity module returned authentication error, or could, be a missing module. Reported error ",Bad})}
+	    {error,error({"Identity module returned authentication error, or could, be a missing module. Reported error ",Bad})};
+	 {_} -> 
+	     {error,"incorrectly formated error response from identity adaptor"}
     end,
     {reply, Reply, State};
 
